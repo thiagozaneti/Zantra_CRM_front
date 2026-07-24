@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-zantra-900 text-white;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-zantra-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-zantra-700 rounded-full;
+}
+
+input, select, textarea {
+  @apply bg-zantra-800 border border-zantra-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zantra-500 focus:border-transparent placeholder-zantra-400;
+}
+
+button {
+  @apply transition-colors duration-200;
+}
+
+.table-row:hover {
+  @apply bg-zantra-800/50;
+}
