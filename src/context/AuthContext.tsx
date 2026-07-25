@@ -18,7 +18,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('zantra_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [token, setToken] = useState<string | null>(localStorage.getItem('zantra_token'));
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data);
+        localStorage.setItem('zantra_user', JSON.stringify(data));
       } else {
         logout();
       }
@@ -63,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     localStorage.setItem('zantra_token', data.accessToken);
     localStorage.setItem('zantra_refresh', data.refreshToken);
+    localStorage.setItem('zantra_user', JSON.stringify(data.user));
     setToken(data.accessToken);
     setUser(data.user);
   };
@@ -70,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem('zantra_token');
     localStorage.removeItem('zantra_refresh');
+    localStorage.removeItem('zantra_user');
     setToken(null);
     setUser(null);
   };

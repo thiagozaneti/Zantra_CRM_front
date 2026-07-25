@@ -1,31 +1,180 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+* {
+  box-sizing: border-box;
+}
+
 body {
-  @apply bg-zantra-900 text-white;
+  @apply bg-surface-50 text-surface-900 font-sans;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-zantra-900;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-zantra-700 rounded-full;
+  @apply bg-surface-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-400;
 }
 
 input, select, textarea {
-  @apply bg-zantra-800 border border-zantra-700 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-zantra-500 focus:border-transparent placeholder-zantra-400;
+  @apply bg-white border border-surface-200 text-surface-900 rounded-lg px-3 py-2.5 text-sm
+         focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+         placeholder-surface-400 transition-all duration-200;
+}
+
+select {
+  @apply bg-white cursor-pointer;
 }
 
 button {
-  @apply transition-colors duration-200;
+  @apply transition-all duration-200;
 }
 
-.table-row:hover {
-  @apply bg-zantra-800/50;
+/* Mobile-first touch targets */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  input, select, textarea {
+    @apply text-base py-3;
+    min-height: 44px;
+  }
+
+  /* Better scrolling */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Full-width buttons on mobile */
+  .btn-primary, .btn-secondary, .btn-danger {
+    @apply w-full justify-center;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2.5 rounded-lg
+           shadow-sm shadow-brand-600/20 hover:shadow-md hover:shadow-brand-600/30
+           active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-surface-50 text-surface-700 font-medium px-4 py-2.5 rounded-lg
+           border border-surface-200 shadow-sm hover:shadow-md
+           active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2.5 rounded-lg
+           shadow-sm shadow-red-500/20 hover:shadow-md hover:shadow-red-500/30
+           active:scale-[0.98] transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-xl border border-surface-200 shadow-sm
+           hover:shadow-md transition-all duration-300;
+  }
+
+  .card-header {
+    @apply px-5 py-4 border-b border-surface-100;
+  }
+
+  .card-body {
+    @apply p-5;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .slide-down {
+    animation: slideDown 0.3s ease-out;
+  }
+
+  .scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+  .stagger-7 { animation-delay: 0.35s; }
+  .stagger-8 { animation-delay: 0.4s; }
+
+  .table-row {
+    @apply transition-colors duration-150;
+  }
+
+  .table-row:hover {
+    @apply bg-surface-50;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
 }

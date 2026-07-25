@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
-import { Plus, Search, Edit2, Trash2, X } from 'lucide-react';
+import { useToast } from '../components/Toast';
+import { useConfirm } from '../components/ConfirmDialog';
+import { Plus, Search, Edit2, Trash2, X, Package } from 'lucide-react';
 
 interface Product {
   id: string; name: string; category: string; unit: string; sku: string;
@@ -9,6 +11,8 @@ interface Product {
 }
 
 export default function Products() {
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -48,37 +52,49 @@ export default function Products() {
     if (!form.name || !form.unit) { setError('Nome e unidade são obrigatórios'); return; }
     setSaving(true); setError('');
     try {
-      if (editingProduct) { await api.updateProduct(editingProduct.id, form); }
-      else { await api.createProduct(form); }
+      if (editingProduct) {
+        await api.updateProduct(editingProduct.id, form);
+        showToast('success', 'Produto atualizado com sucesso!');
+      } else {
+        await api.createProduct(form);
+        showToast('success', 'Produto criado com sucesso!');
+      }
       setShowModal(false); loadProducts(); loadCategories();
-    } catch (err: any) { setError(err.message); }
+    } catch (err: any) { setError(err.message); showToast('error', err.message); }
     finally { setSaving(false); }
   };
 
   const handleDeactivate = async (id: string) => {
-    if (!confirm('Tem certeza que deseja inativar este produto?')) return;
-    try { await api.deactivateProduct(id); loadProducts(); }
-    catch (err: any) { alert(err.message); }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-    try { await api.deleteProduct(id); loadProducts(); }
-    catch (err: any) { alert(err.message); }
+    const confirmed = await confirm({
+      title: 'Inativar Produto',
+      message: 'Tem certeza que deseja inativar este produto? Ele não aparecerá mais nos selects de movimentação.',
+      confirmText: 'Inativar',
+      type: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await api.deactivateProduct(id);
+      showToast('success', 'Produto inativado com sucesso!');
+      loadProducts();
+    }
+    catch (err: any) { showToast('error', err.message); }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl font-bold text-white">Produtos</h1>
-        <button onClick={openNew} className="flex items-center gap-2 bg-zantra-600 hover:bg-zantra-500 text-white px-4 py-2 rounded-lg">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-surface-900">Produtos</h1>
+          <p className="text-surface-500 mt-1 text-sm">{pagination.total} produtos cadastrados</p>
+        </div>
+        <button onClick={openNew} className="btn-primary flex items-center gap-2">
           <Plus size={18} /> Novo Produto
         </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zantra-500" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" size={18} />
           <input placeholder="Buscar produto..." value={search} onChange={(e) => { setSearch(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full pl-10" />
         </div>
         <select value={category} onChange={(e) => { setCategory(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full sm:w-48">
@@ -87,43 +103,100 @@ export default function Products() {
         </select>
       </div>
 
-      <div className="bg-zantra-800 rounded-xl border border-zantra-700 overflow-hidden">
+      {/* Mobile card view */}
+      <div className="lg:hidden space-y-3">
+        {loading ? (
+          <div className="text-center py-12 text-surface-400">Carregando...</div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-12 text-surface-400">Nenhum produto encontrado</div>
+        ) : products.map((p, index) => (
+          <div key={p.id} className="mobile-card fade-in" style={{ animationDelay: `${index * 0.03}s` }}>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-brand-100 rounded-lg flex items-center justify-center">
+                  <Package size={18} className="text-brand-600" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-surface-900">{p.name}</h3>
+                  <p className="text-xs text-surface-500">{p.category || 'Sem categoria'}</p>
+                </div>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-500'}`}>
+                {p.active ? 'Ativo' : 'Inativo'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex gap-4 text-surface-600">
+                <span>{p.unit}</span>
+                {p.sku && <span className="font-mono text-xs">SKU: {p.sku}</span>}
+                {p.brand && <span>{p.brand}</span>}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => openEdit(p)} className="p-2 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg">
+                  <Edit2 size={16} />
+                </button>
+                {p.active && (
+                  <button onClick={() => handleDeactivate(p.id)} className="p-2 text-surface-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden card overflow-hidden lg:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zantra-700">
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">Nome</th>
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">Categoria</th>
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">Unidade</th>
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">SKU</th>
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">Marca</th>
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">Est. Mín</th>
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">Status</th>
-                <th className="text-left px-4 py-3 text-zantra-400 font-medium">Ações</th>
+              <tr className="border-b border-surface-200 bg-surface-50">
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">Produto</th>
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">Categoria</th>
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">Unidade</th>
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">SKU</th>
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">Marca</th>
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">Est. Mín</th>
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">Status</th>
+                <th className="text-left px-4 py-3 text-surface-600 font-medium text-xs uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-zantra-400">Carregando...</td></tr>
+                <tr><td colSpan={8} className="text-center py-12 text-surface-400">Carregando...</td></tr>
               ) : products.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-zantra-400">Nenhum produto encontrado</td></tr>
-              ) : products.map((p) => (
-                <tr key={p.id} className="border-b border-zantra-700/50 hover:bg-zantra-700/30">
-                  <td className="px-4 py-3 text-white">{p.name}</td>
-                  <td className="px-4 py-3 text-zantra-300">{p.category || '-'}</td>
-                  <td className="px-4 py-3 text-zantra-300">{p.unit}</td>
-                  <td className="px-4 py-3 text-zantra-300">{p.sku || '-'}</td>
-                  <td className="px-4 py-3 text-zantra-300">{p.brand || '-'}</td>
-                  <td className="px-4 py-3 text-zantra-300">{p.minStock}</td>
+                <tr><td colSpan={8} className="text-center py-12 text-surface-400">Nenhum produto encontrado</td></tr>
+              ) : products.map((p, index) => (
+                <tr key={p.id} className="border-b border-surface-100 hover:bg-surface-50 fade-in" style={{ animationDelay: `${index * 0.03}s` }}>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
+                        <Package size={16} className="text-brand-600" />
+                      </div>
+                      <span className="font-medium text-surface-900">{p.name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-surface-600">{p.category || '-'}</td>
+                  <td className="px-4 py-3 text-surface-600">{p.unit}</td>
+                  <td className="px-4 py-3 text-surface-600 font-mono text-xs">{p.sku || '-'}</td>
+                  <td className="px-4 py-3 text-surface-600">{p.brand || '-'}</td>
+                  <td className="px-4 py-3 text-surface-600">{p.minStock}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-500'}`}>
                       {p.active ? 'Ativo' : 'Inativo'}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button onClick={() => openEdit(p)} className="text-zantra-400 hover:text-white"><Edit2 size={16} /></button>
-                      {p.active && <button onClick={() => handleDeactivate(p.id)} className="text-yellow-400 hover:text-yellow-300"><Trash2 size={16} /></button>}
+                    <div className="flex gap-1">
+                      <button onClick={() => openEdit(p)} className="p-1.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                        <Edit2 size={16} />
+                      </button>
+                      {p.active && (
+                        <button onClick={() => handleDeactivate(p.id)} className="p-1.5 text-surface-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -134,37 +207,64 @@ export default function Products() {
       </div>
 
       {pagination.pages > 1 && (
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center gap-1">
           {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((p) => (
-            <button key={p} onClick={() => setPagination(prev => ({ ...prev, page: p }))} className={`px-3 py-1 rounded-lg text-sm ${p === pagination.page ? 'bg-zantra-600 text-white' : 'bg-zantra-800 text-zantra-400 hover:bg-zantra-700'}`}>{p}</button>
+            <button key={p} onClick={() => setPagination(prev => ({ ...prev, page: p }))} className={`w-9 h-9 rounded-lg text-sm font-medium ${p === pagination.page ? 'bg-brand-600 text-white' : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'}`}>{p}</button>
           ))}
         </div>
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zantra-800 rounded-xl border border-zantra-700 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center p-4 border-b border-zantra-700">
-              <h2 className="text-lg font-semibold text-white">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-zantra-400 hover:text-white"><X size={20} /></button>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end lg:items-center justify-center z-50 fade-in">
+          <div className="bg-white w-full lg:max-w-lg lg:rounded-2xl max-h-[95vh] lg:max-h-[90vh] overflow-hidden shadow-xl scale-in rounded-t-2xl lg:rounded-2xl">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-surface-200">
+              <h2 className="text-lg font-semibold text-surface-900">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
+              <button onClick={() => setShowModal(false)} className="text-surface-400 hover:text-surface-600 p-1 hover:rotate-90 transition-transform duration-200"><X size={20} /></button>
             </div>
-            <div className="p-4 space-y-3">
-              {error && <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-3 py-2 rounded-lg text-sm">{error}</div>}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2"><label className="block text-sm text-zantra-400 mb-1">Nome *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" /></div>
-                <div><label className="block text-sm text-zantra-400 mb-1">Categoria</label><input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full" /></div>
-                <div><label className="block text-sm text-zantra-400 mb-1">Unidade *</label><input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="w-full" /></div>
-                <div><label className="block text-sm text-zantra-400 mb-1">SKU</label><input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="w-full" /></div>
-                <div><label className="block text-sm text-zantra-400 mb-1">Código de Barras</label><input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className="w-full" /></div>
-                <div><label className="block text-sm text-zantra-400 mb-1">Marca</label><input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="w-full" /></div>
-                <div><label className="block text-sm text-zantra-400 mb-1">Fornecedor</label><input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className="w-full" /></div>
-                <div><label className="block text-sm text-zantra-400 mb-1">Estoque Mínimo</label><input type="number" value={form.minStock} onChange={(e) => setForm({ ...form, minStock: Number(e.target.value) })} className="w-full" /></div>
-                <div className="col-span-2"><label className="block text-sm text-zantra-400 mb-1">Observações</label><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full" rows={2} /></div>
+            <div className="p-4 lg:p-6 overflow-y-auto max-h-[80vh] lg:max-h-[60vh] space-y-4">
+              {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Nome *</label>
+                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Categoria</label>
+                  <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Unidade *</label>
+                  <input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">SKU</label>
+                  <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Código de Barras</label>
+                  <input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Marca</label>
+                  <input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Fornecedor</label>
+                  <input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Estoque Mínimo</label>
+                  <input type="number" value={form.minStock} onChange={(e) => setForm({ ...form, minStock: Number(e.target.value) })} className="w-full" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Observações</label>
+                  <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full" rows={2} />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 p-4 border-t border-zantra-700">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg text-zantra-400 hover:text-white">Cancelar</button>
-              <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-lg bg-zantra-600 hover:bg-zantra-500 text-white disabled:opacity-50">{saving ? 'Salvando...' : 'Salvar'}</button>
+            <div className="flex gap-3 px-4 lg:px-6 py-4 border-t border-surface-200 bg-surface-50 sticky bottom-0">
+              <button onClick={() => setShowModal(false)} className="btn-secondary flex-1 lg:flex-none">Cancelar</button>
+              <button onClick={handleSave} disabled={saving} className="btn-primary flex-1 lg:flex-none disabled:opacity-50">{saving ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </div>
         </div>
