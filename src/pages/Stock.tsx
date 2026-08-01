@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { Settings, X, AlertTriangle, Warehouse } from 'lucide-react';
+import { hasActionPermission } from '../components/Layout';
+import { quantityStep } from '../lib/quantity';
 
 export default function Stock() {
   const { showToast } = useToast();
@@ -12,12 +14,16 @@ export default function Stock() {
   const [fLocationId, setFLocationId] = useState('');
   const [fCategory, setFCategory] = useState('');
   const [fProductId, setFProductId] = useState('');
+  const [atDate, setAtDate] = useState('');
   const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [adjustForm, setAdjustForm] = useState({ productId: '', locationId: '', newQty: 0, reason: '' });
+  const [adjustForm, setAdjustForm] = useState({ productId: '', locationId: '', newQty: 0, minStock: 0, reason: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { loadStock(); loadRefs(); }, [fLocationId, fCategory, fProductId]);
+  const canAdjust = hasActionPermission('stock:adjust');
+  const canSetMinimum = hasActionPermission('stock:minima');
+  const selectedAdjustmentProduct = products.find((product) => product.id === adjustForm.productId);
+  useEffect(() => { loadStock(); loadRefs(); }, [fLocationId, fCategory, fProductId, atDate]);
 
   const loadStock = async () => {
     try {
@@ -26,6 +32,7 @@ export default function Stock() {
       if (fLocationId) params.set('locationId', fLocationId);
       if (fCategory) params.set('category', fCategory);
       if (fProductId) params.set('productId', fProductId);
+      if (atDate) params.set('atDate', atDate);
       const result = await api.getStock(params.toString());
       setStocks(result);
     } catch (err: any) { console.error(err); }
@@ -35,11 +42,11 @@ export default function Stock() {
   const loadRefs = async () => {
     try {
       const [locs, prods] = await Promise.all([
-        api.getLocations(),
-        api.getProducts('active=true&limit=100'),
+        api.getReferenceLocations(),
+        api.getReferenceProducts(),
       ]);
-      setLocations(locs);
-      setProducts(prods.data);
+      setLocations(Array.isArray(locs) ? locs : (locs?.data || []));
+      setProducts(Array.isArray(prods) ? prods : (prods?.data || []));
     } catch (err) { console.error(err); }
   };
 
@@ -50,6 +57,7 @@ export default function Stock() {
     setSaving(true); setError('');
     try {
       await api.adjustStock(adjustForm);
+      if (canSetMinimum) await api.setStockMinimum({ productId: adjustForm.productId, locationId: adjustForm.locationId, quantity: adjustForm.minStock });
       showToast('success', 'Estoque ajustado com sucesso!');
       setShowAdjustModal(false); loadStock();
     } catch (err: any) { setError(err.message); showToast('error', err.message); }
@@ -58,9 +66,9 @@ export default function Stock() {
 
   const openAdjust = (stock?: any) => {
     if (stock) {
-      setAdjustForm({ productId: stock.product.id, locationId: stock.location.id, newQty: stock.quantity, reason: '' });
+      setAdjustForm({ productId: stock.product.id, locationId: stock.location.id, newQty: stock.quantity, minStock: stock.effectiveMinStock ?? stock.product.minStock ?? 0, reason: '' });
     } else {
-      setAdjustForm({ productId: '', locationId: '', newQty: 0, reason: '' });
+      setAdjustForm({ productId: '', locationId: '', newQty: 0, minStock: 0, reason: '' });
     }
     setShowAdjustModal(true); setError('');
   };
@@ -69,7 +77,7 @@ export default function Stock() {
   const matrix = stocks.reduce((acc: any, s: any) => {
     const key = s.product.id;
     if (!acc[key]) acc[key] = { product: s.product, locations: {} };
-    acc[key].locations[s.location.id] = { quantity: s.quantity, location: s.location };
+    acc[key].locations[s.location.id] = { quantity: s.quantity, location: s.location, effectiveMinStock: s.effectiveMinStock, product: s.product };
     return acc;
   }, {});
 
@@ -82,15 +90,15 @@ export default function Stock() {
           <h1 className="text-2xl font-bold text-surface-900">Estoque</h1>
           <p className="text-surface-500 mt-1">Visualização em matriz por produto e local</p>
         </div>
-        <button onClick={() => openAdjust()} className="btn-primary flex items-center gap-2">
+        {canAdjust && !atDate && <button onClick={() => openAdjust()} className="btn-primary flex items-center gap-2">
           <Settings size={18} /> Ajustar Estoque
-        </button>
+        </button>}
       </div>
 
       {/* Filters */}
       <div className="card">
         <div className="card-body">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-surface-500 mb-1.5">Local</label>
               <select value={fLocationId} onChange={(e) => setFLocationId(e.target.value)} className="w-full">
@@ -98,6 +106,7 @@ export default function Stock() {
                 {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
+            <div><label className="block text-xs font-medium text-surface-500 mb-1.5">Posição em</label><input type="date" value={atDate} onChange={(e) => setAtDate(e.target.value)} className="w-full" /></div>
             <div>
               <label className="block text-xs font-medium text-surface-500 mb-1.5">Categoria</label>
               <input value={fCategory} onChange={(e) => setFCategory(e.target.value)} placeholder="Filtrar por categoria" className="w-full" />
@@ -137,11 +146,12 @@ export default function Stock() {
               {activeLocations.map((l: any) => {
                 const cell = row.locations[l.id];
                 const qty = cell?.quantity || 0;
-                const isLow = row.product.minStock > 0 && qty <= row.product.minStock;
+                const minimum = cell?.effectiveMinStock ?? row.product.minStock;
+                const isLow = minimum > 0 && qty <= minimum;
                 return (
                   <button
                     key={l.id}
-                    onClick={() => openAdjust(cell || { product: row.product, location: l, quantity: 0 })}
+                    onClick={() => canAdjust && !atDate && openAdjust(cell || { product: row.product, location: l, quantity: 0, effectiveMinStock: row.product.minStock })}
                     className={`p-2 rounded-lg text-left ${
                       isLow ? 'bg-red-50 border border-red-200' :
                       qty > 0 ? 'bg-surface-50 border border-surface-200' :
@@ -189,11 +199,12 @@ export default function Stock() {
                   {activeLocations.map((l: any) => {
                     const cell = row.locations[l.id];
                     const qty = cell?.quantity || 0;
-                    const isLow = row.product.minStock > 0 && qty <= row.product.minStock;
+                    const minimum = cell?.effectiveMinStock ?? row.product.minStock;
+                    const isLow = minimum > 0 && qty <= minimum;
                     return (
                       <td key={l.id} className="text-center px-4 py-3">
                         <button
-                          onClick={() => openAdjust(cell || { product: row.product, location: l, quantity: 0 })}
+                          onClick={() => canAdjust && !atDate && openAdjust(cell || { product: row.product, location: l, quantity: 0, effectiveMinStock: row.product.minStock })}
                           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                             isLow ? 'bg-red-100 text-red-700 hover:bg-red-200' :
                             qty > 0 ? 'bg-surface-100 text-surface-900 hover:bg-surface-200' :
@@ -239,8 +250,9 @@ export default function Stock() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Nova Quantidade *</label>
-                <input type="number" min="0" step="0.01" value={adjustForm.newQty || ''} onChange={(e) => setAdjustForm({ ...adjustForm, newQty: Number(e.target.value) })} className="w-full" />
+                <input type="number" min="0" step={quantityStep(selectedAdjustmentProduct?.unit)} value={adjustForm.newQty || ''} onChange={(e) => setAdjustForm({ ...adjustForm, newQty: Number(e.target.value) })} className="w-full" />
               </div>
+              {canSetMinimum && <div><label className="block text-sm font-medium text-surface-700 mb-1.5">Estoque mínimo neste local *</label><input type="number" min="0" step={quantityStep(selectedAdjustmentProduct?.unit)} value={adjustForm.minStock} onChange={(e) => setAdjustForm({ ...adjustForm, minStock: Number(e.target.value) })} className="w-full" /></div>}
               <div>
                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Justificativa * (obrigatória)</label>
                 <textarea value={adjustForm.reason} onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })} className="w-full" rows={3} placeholder="Descreva o motivo do ajuste..." />

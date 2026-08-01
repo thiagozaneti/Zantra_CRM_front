@@ -3,10 +3,14 @@ import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import { Plus, Search, Edit2, Trash2, X, Warehouse, Store } from 'lucide-react';
+import { hasActionPermission } from '../components/Layout';
 
-interface Location { id: string; name: string; type: string; description: string; active: boolean; }
+interface Location { id: string; name: string; type: string; description: string; active: boolean; acceptsEntry: boolean; allowsSale: boolean; allowsConsumption: boolean; allowsTransferOrigin: boolean; allowsTransferDestination: boolean; }
+
+const locationTypes: Record<string, string> = { COLD_ROOM: 'Câmara Fria', BAR: 'Bar', KITCHEN: 'Cozinha', WAREHOUSE: 'Almoxarifado', PRODUCTION: 'Produção', OTHER: 'Outro' };
 
 export default function Locations() {
+  const canManage = hasActionPermission('locations:manage');
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -15,7 +19,7 @@ export default function Locations() {
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
-  const [form, setForm] = useState({ name: '', type: 'COLD_ROOM', description: '' });
+  const [form, setForm] = useState({ name: '', type: 'COLD_ROOM', description: '', acceptsEntry: true, allowsSale: false, allowsConsumption: true, allowsTransferOrigin: true, allowsTransferDestination: true });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -33,8 +37,8 @@ export default function Locations() {
     finally { setLoading(false); }
   };
 
-  const openNew = () => { setEditing(null); setForm({ name: '', type: 'COLD_ROOM', description: '' }); setShowModal(true); setError(''); };
-  const openEdit = (l: Location) => { setEditing(l); setForm({ name: l.name, type: l.type, description: l.description || '' }); setShowModal(true); setError(''); };
+  const openNew = () => { setEditing(null); setForm({ name: '', type: 'COLD_ROOM', description: '', acceptsEntry: true, allowsSale: false, allowsConsumption: true, allowsTransferOrigin: true, allowsTransferDestination: true }); setShowModal(true); setError(''); };
+  const openEdit = (l: Location) => { setEditing(l); setForm({ name: l.name, type: l.type, description: l.description || '', acceptsEntry: l.acceptsEntry, allowsSale: l.allowsSale, allowsConsumption: l.allowsConsumption, allowsTransferOrigin: l.allowsTransferOrigin, allowsTransferDestination: l.allowsTransferDestination }); setShowModal(true); setError(''); };
 
   const handleSave = async () => {
     if (!form.name) { setError('Nome é obrigatório'); return; }
@@ -75,9 +79,9 @@ export default function Locations() {
           <h1 className="text-xl lg:text-2xl font-bold text-surface-900">Locais</h1>
           <p className="text-surface-500 mt-1 text-sm">{locations.length} locais cadastrados</p>
         </div>
-        <button onClick={openNew} className="btn-primary flex items-center gap-2">
+        {canManage && <button onClick={openNew} className="btn-primary flex items-center gap-2">
           <Plus size={18} /> Novo Local
-        </button>
+        </button>}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -89,6 +93,7 @@ export default function Locations() {
           <option value="">Todos os tipos</option>
           <option value="COLD_ROOM">Câmara Fria</option>
           <option value="BAR">Bar</option>
+          <option value="KITCHEN">Cozinha</option><option value="WAREHOUSE">Almoxarifado</option><option value="PRODUCTION">Produção</option><option value="OTHER">Outro</option>
         </select>
       </div>
 
@@ -107,15 +112,15 @@ export default function Locations() {
                 <div>
                   <h3 className="font-semibold text-surface-900">{l.name}</h3>
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${l.type === 'COLD_ROOM' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                    {l.type === 'COLD_ROOM' ? 'Câmara Fria' : 'Bar'}
+                    {locationTypes[l.type] || l.type}
                   </span>
                 </div>
               </div>
               <div className="flex gap-1">
-                <button onClick={() => openEdit(l)} className="p-1.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
+                {canManage && <button onClick={() => openEdit(l)} className="p-1.5 text-surface-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors">
                   <Edit2 size={16} />
-                </button>
-                {l.active && (
+                </button>}
+                {canManage && l.active && (
                   <button onClick={() => handleDelete(l.id)} className="p-1.5 text-surface-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                     <Trash2 size={16} />
                   </button>
@@ -149,7 +154,15 @@ export default function Locations() {
                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full">
                   <option value="COLD_ROOM">Câmara Fria</option>
                   <option value="BAR">Bar</option>
+                  <option value="KITCHEN">Cozinha</option><option value="WAREHOUSE">Almoxarifado</option><option value="PRODUCTION">Produção</option><option value="OTHER">Outro</option>
                 </select>
+              </div>
+              <div className="rounded-xl border border-surface-200 p-4 space-y-3">
+                <p className="text-sm font-medium text-surface-700">Operações permitidas</p>
+                {[
+                  ['acceptsEntry', 'Receber entradas externas'], ['allowsSale', 'Realizar vendas'], ['allowsConsumption', 'Registrar consumo interno'],
+                  ['allowsTransferOrigin', 'Enviar transferências'], ['allowsTransferDestination', 'Receber transferências'],
+                ].map(([key, label]) => <label key={key} className="flex items-center gap-3 text-sm text-surface-600"><input type="checkbox" checked={(form as any)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.checked })}/>{label}</label>)}
               </div>
               <div>
                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Descrição</label>

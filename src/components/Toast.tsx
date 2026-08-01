@@ -9,6 +9,8 @@ interface Toast {
   message: string;
 }
 
+const toastTitles: Record<ToastType, string> = { success: 'Concluído', error: 'Não foi possível concluir', warning: 'Atenção', info: 'Informação' };
+
 interface ToastContextType {
   showToast: (type: ToastType, message: string) => void;
 }
@@ -26,7 +28,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const showToast = useCallback((type: ToastType, message: string) => {
     const id = Math.random().toString(36).substring(7);
-    setToasts((prev) => [...prev, { id, type, message }]);
+    setToasts((prev) => [...prev.slice(-2), { id, type, message }]);
   }, []);
 
   const removeToast = (id: string) => {
@@ -36,7 +38,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed top-4 right-4 z-[100] space-y-2 max-w-sm w-full pointer-events-none">
+      <div className="pointer-events-none fixed inset-x-3 top-3 z-[100] space-y-2 sm:left-auto sm:right-4 sm:top-4 sm:w-full sm:max-w-sm">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
         ))}
@@ -66,10 +68,10 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   };
 
   return (
-    <div className={`pointer-events-auto ${bgColors[toast.type]} border rounded-lg shadow-lg p-4 flex items-start gap-3 slide-down`}>
-      {icons[toast.type]}
-      <p className="text-sm text-surface-700 flex-1">{toast.message}</p>
-      <button onClick={() => onRemove(toast.id)} className="text-surface-400 hover:text-surface-600 shrink-0">
+    <div role="status" className={`pointer-events-auto ${bgColors[toast.type]} flex items-start gap-3 rounded-lg border p-3.5 shadow-lg slide-down`}>
+      <span className="mt-0.5 shrink-0">{icons[toast.type]}</span>
+      <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-surface-800">{toastTitles[toast.type]}</p><p className="mt-0.5 break-words text-xs leading-relaxed text-surface-600">{toast.message}</p></div>
+      <button onClick={() => onRemove(toast.id)} className="shrink-0 rounded p-1 text-surface-400 hover:bg-black/5 hover:text-surface-700" aria-label="Fechar notificação">
         <X size={16} />
       </button>
     </div>

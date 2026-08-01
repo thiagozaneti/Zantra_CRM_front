@@ -4,6 +4,7 @@ import { FileText, Download, FileSpreadsheet } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { hasActionPermission } from '../components/Layout';
 
 const reportTypes = [
   { id: 'entries', label: 'Entradas' },
@@ -12,10 +13,13 @@ const reportTypes = [
   { id: 'product-history', label: 'Histórico de Produto' },
   { id: 'employee-movements', label: 'Movimentações por Funcionário' },
   { id: 'adjustments', label: 'Divergências e Ajustes' },
-  { id: 'consumption', label: 'Consumo por Bar' },
+  { id: 'consumption', label: 'Consumo Interno' },
+  { id: 'sales', label: 'Vendas' },
+  { id: 'inventories', label: 'Inventários físicos' },
 ];
 
 export default function Reports() {
+  const canExport = hasActionPermission('reports:export');
   const [selectedReport, setSelectedReport] = useState('entries');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,13 +38,13 @@ export default function Reports() {
   const loadRefs = async () => {
     try {
       const [prods, locs, usrs] = await Promise.all([
-        api.getProducts('active=true&limit=100'),
-        api.getLocations(),
-        api.getUsers(),
+        api.getReferenceProducts(),
+        api.getReferenceLocations(),
+        api.getReferenceUsers(),
       ]);
-      setProducts(prods.data);
-      setLocations(locs);
-      setUsers(usrs);
+      setProducts(Array.isArray(prods) ? prods : (prods?.data || []));
+      setLocations(Array.isArray(locs) ? locs : (locs?.data || []));
+      setUsers(Array.isArray(usrs) ? usrs : (usrs?.data || []));
     } catch (err) { console.error(err); }
   };
 
@@ -63,10 +67,12 @@ export default function Reports() {
 
   const getHeaders = (): string[] => {
     switch (selectedReport) {
-      case 'entries': return ['Data', 'Produto', 'Qtd', 'Unidade', 'Câmara', 'Fornecedor', 'NF', 'Responsável'];
-      case 'transfers':
-      case 'consumption': return ['Data', 'Produto', 'Qtd', 'Origem', 'Destino', 'Retirado por', 'Recebido por'];
+      case 'entries': return ['Data', 'Produto', 'Qtd', 'Unidade', 'Local', 'Fornecedor', 'NF', 'Responsável'];
+      case 'transfers': return ['Data', 'Produto', 'Qtd', 'Origem', 'Destino', 'Retirado por', 'Recebido por'];
+      case 'consumption': return ['Data', 'Local', 'Tipo', 'Produto', 'Qtd', 'Unidade', 'Responsável', 'Motivo', 'Situação'];
+      case 'sales': return ['Número', 'Data', 'Bar', 'Operador', 'Pagamento', 'Subtotal', 'Desconto', 'Total', 'Situação'];
       case 'stock': return ['Produto', 'SKU', 'Categoria', 'Local', 'Tipo', 'Qtd', 'Mín', 'Unidade'];
+      case 'inventories': return ['Inventário', 'Data', 'Local', 'Produto', 'Esperado', 'Contado', 'Diferença', 'Impacto estimado', 'Situação'];
       case 'product-history':
       case 'employee-movements':
       case 'adjustments': return ['Data', 'Usuário', 'Operação', 'Produto', 'Qtd Anterior', 'Movimentado', 'Resultado', 'Notas'];
@@ -89,7 +95,6 @@ export default function Reports() {
             item.receivedBy?.name || '',
           ];
         case 'transfers':
-        case 'consumption':
           return [
             new Date(item.createdAt).toLocaleDateString('pt-BR'),
             item.product?.name || '',
@@ -99,17 +104,27 @@ export default function Reports() {
             item.withdrawnBy?.name || '',
             item.receivedBy?.name || '',
           ];
+        case 'consumption': {
+          const labels: Record<string, string> = { NORMAL: 'Uso normal', PRODUCTION: 'Produção', LOSS: 'Perda', DAMAGE: 'Avaria', COURTESY: 'Cortesia', OTHER: 'Outros' };
+          return [new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', labels[item.type] || item.type, item.product?.name || '', item.quantity, item.product?.unit || '', item.registeredBy?.name || '', item.reason || '', item.reversedAt ? 'Estornado' : 'Efetivado'];
+        }
+        case 'sales':
+          return [`#${item.number}`, new Date(item.createdAt).toLocaleString('pt-BR'), item.location?.name || '', item.registeredBy?.name || '', item.paymentMethod, Number(item.subtotal).toFixed(2), Number(item.discount).toFixed(2), Number(item.totalAmount).toFixed(2), item.status === 'COMPLETED' ? 'Concluída' : 'Estornada'];
         case 'stock':
           return [
             item.product?.name || '',
             item.product?.sku || '',
             item.product?.category || '',
             item.location?.name || '',
-            item.location?.type === 'COLD_ROOM' ? 'Câmara Fria' : 'Bar',
+            item.location?.type === 'COLD_ROOM' ? 'Câmara Fria' : item.location?.type === 'UNASSIGNED' ? 'Sem destino' : item.location?.type === 'BAR' ? 'Bar' : 'Outro local',
             item.quantity,
             item.product?.minStock || 0,
             item.product?.unit || '',
           ];
+        case 'inventories': {
+          const inventoryLabels: Record<string, string> = { COUNTING: 'Em contagem', PENDING_APPROVAL: 'Aguardando aprovação', RECOUNT_REQUIRED: 'Recontagem', APPLIED: 'Aplicado', REJECTED: 'Rejeitado' };
+          return [`#${item.inventoryNumber}`, new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', item.product?.name || '', item.expectedQuantity ?? '', item.countedQuantity ?? '', item.difference ?? '', Number(item.financialDifference || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), inventoryLabels[item.status] || item.status];
+        }
         default:
           return [
             new Date(item.createdAt).toLocaleDateString('pt-BR'),
@@ -232,7 +247,7 @@ export default function Reports() {
               <label className="block text-xs font-medium text-surface-500 mb-1.5">Data Fim</label>
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full" />
             </div>
-            {(selectedReport === 'entries' || selectedReport === 'product-history' || selectedReport === 'stock' || selectedReport === 'consumption') && (
+            {(selectedReport === 'entries' || selectedReport === 'product-history' || selectedReport === 'stock' || selectedReport === 'consumption' || selectedReport === 'sales') && (
               <div>
                 <label className="block text-xs font-medium text-surface-500 mb-1.5">Produto</label>
                 <select value={productId} onChange={(e) => setProductId(e.target.value)} className="w-full">
@@ -241,7 +256,7 @@ export default function Reports() {
                 </select>
               </div>
             )}
-            {(selectedReport === 'entries' || selectedReport === 'stock' || selectedReport === 'adjustments' || selectedReport === 'consumption') && (
+            {(selectedReport === 'entries' || selectedReport === 'stock' || selectedReport === 'adjustments' || selectedReport === 'consumption' || selectedReport === 'sales') && (
               <div>
                 <label className="block text-xs font-medium text-surface-500 mb-1.5">Local</label>
                 <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className="w-full">
@@ -250,7 +265,7 @@ export default function Reports() {
                 </select>
               </div>
             )}
-            {(selectedReport === 'employee-movements' || selectedReport === 'adjustments') && (
+            {(selectedReport === 'employee-movements' || selectedReport === 'adjustments' || selectedReport === 'sales') && (
               <div>
                 <label className="block text-xs font-medium text-surface-500 mb-1.5">Funcionário</label>
                 <select value={userId} onChange={(e) => setUserId(e.target.value)} className="w-full">
@@ -265,7 +280,7 @@ export default function Reports() {
               <FileText size={16} />
               {loading ? 'Carregando...' : 'Carregar Relatório'}
             </button>
-            {data.length > 0 && (
+            {canExport && data.length > 0 && (
               <>
                 <button onClick={exportPDF} className="btn-secondary flex items-center gap-2">
                   <Download size={16} />

@@ -1,0 +1,16 @@
+import { useEffect, useState } from 'react';
+import { AlertTriangle, ArrowLeftRight, PackagePlus, ClipboardList } from 'lucide-react';
+import { api } from '../lib/api';
+const supplyStatus: Record<string, string> = { REQUESTED: 'Solicitado', PREPARING: 'Em separação', SENT: 'Enviado' };
+
+export default function Pending() {
+  const [data, setData] = useState<any>(null); useEffect(() => { api.getPending().then(setData); }, []); if (!data) return <div className="p-8 text-center text-surface-400">Carregando pendências...</div>;
+  return <div className="space-y-5"><div><h1 className="text-2xl font-semibold">Central de Pendências</h1><p className="text-sm text-surface-500">{data.counts.total} item(ns) exigem atenção</p></div><div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[['Transferências', data.counts.transfers], ['Abastecimentos', data.counts.supplies], ['Inventários', data.counts.inventories || 0], ['Estoque baixo', data.counts.lowStock]].map(([label, value]) => <div className="rounded-lg border bg-white p-4" key={String(label)}><p className="text-xs text-surface-500">{label}</p><p className="mt-1 text-2xl font-semibold">{value}</p></div>)}</div>
+    <PendingSection title="Transferências" icon={ArrowLeftRight}>{data.transfers.map((row: any) => <Row key={row.id} title={row.product.name} text={`${row.origin.name} → ${row.destination.name}`} status={row.status === 'PENDING_APPROVAL' ? 'Aguardando aprovação' : 'Aguardando recebimento'}/>)}</PendingSection>
+    <PendingSection title="Solicitações de abastecimento" icon={PackagePlus}>{data.supplies.map((row: any) => <Row key={row.id} title={`Solicitação #${row.number}`} text={`${row.source?.name || 'Origem a definir'} → ${row.destination.name}`} status={supplyStatus[row.status] || row.status}/>)}</PendingSection>
+    <PendingSection title="Inventários físicos" icon={ClipboardList}>{(data.inventories || []).map((row: any) => <Row key={row.id} title={`Inventário #${row.number}`} text={row.location.name} status={row.status === 'PENDING_APPROVAL' ? 'Aguardando aprovação' : 'Recontagem necessária'}/>)}</PendingSection>
+    <PendingSection title="Estoque baixo" icon={AlertTriangle}>{data.lowStock.map((row: any) => <Row key={row.id} title={row.product.name} text={row.location.name} status={`${row.quantity} ${row.product.unit} · mínimo ${row.effectiveMinStock}`}/>)}</PendingSection>
+  </div>;
+}
+function PendingSection({ title, icon: Icon, children }: any) { const rows = Array.isArray(children) ? children : children ? [children] : []; return <section className="rounded-lg border bg-white"><div className="flex items-center gap-2 border-b p-4"><Icon size={17}/><h2 className="font-semibold">{title}</h2><span className="ml-auto text-xs text-surface-400">{rows.length}</span></div><div className="divide-y">{rows.length ? rows : <p className="p-6 text-center text-sm text-surface-400">Nenhuma pendência</p>}</div></section>; }
+function Row({ title, text, status }: any) { return <div className="grid gap-2 p-4 sm:grid-cols-[1fr_auto]"><div><p className="text-sm font-medium">{title}</p><p className="text-xs text-surface-400">{text}</p></div><span className="text-xs font-medium text-amber-700">{status}</span></div>; }

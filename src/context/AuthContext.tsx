@@ -5,6 +5,10 @@ interface User {
   name: string;
   email: string;
   role: string;
+  permissions: string[];
+  assignedLocationId?: string | null;
+  locations?: Array<{ id: string; name: string; type: string; allowsSale: boolean }>;
+  mustChangePassword?: boolean;
 }
 
 interface AuthContextType {
@@ -31,6 +35,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setLoading(false);
     }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    const refreshAccess = () => { if (document.visibilityState === 'visible') fetchUser(); };
+    window.addEventListener('focus', refreshAccess);
+    document.addEventListener('visibilitychange', refreshAccess);
+    return () => { window.removeEventListener('focus', refreshAccess); document.removeEventListener('visibilitychange', refreshAccess); };
   }, [token]);
 
   const fetchUser = async () => {
@@ -73,6 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    const refreshToken = localStorage.getItem('zantra_refresh');
+    if (refreshToken) fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) }).catch(() => undefined);
     localStorage.removeItem('zantra_token');
     localStorage.removeItem('zantra_refresh');
     localStorage.removeItem('zantra_user');

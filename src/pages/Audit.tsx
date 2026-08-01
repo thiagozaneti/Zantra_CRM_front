@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { Pagination } from '../components/DataControls';
 import { Shield, Filter } from 'lucide-react';
 
 export default function Audit() {
@@ -33,7 +34,7 @@ export default function Audit() {
   };
 
   const loadUsers = async () => {
-    try { const result = await api.getUsers(); setUsers(result); } catch {}
+    try { const result = await api.getReferenceUsers(); setUsers(result); } catch {}
   };
 
   const getOpStyle = (op: string) => {
@@ -165,13 +166,7 @@ export default function Audit() {
         </div>
       </div>
 
-      {pagination.pages > 1 && (
-        <div className="flex justify-center gap-1">
-          {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((p) => (
-            <button key={p} onClick={() => setPagination(prev => ({ ...prev, page: p }))} className={`w-9 h-9 rounded-lg text-sm font-medium ${p === pagination.page ? 'bg-brand-600 text-white' : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'}`}>{p}</button>
-          ))}
-        </div>
-      )}
+      <Pagination {...pagination} onChange={(page) => setPagination((current) => ({ ...current, page }))}/>
     </div>
   );
 }

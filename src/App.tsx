@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -15,6 +16,14 @@ import Stock from './pages/Stock';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Audit from './pages/Audit';
+import Consumption from './pages/Consumption';
+import Sales from './pages/Sales';
+import ErrorBoundary from './components/ErrorBoundary';
+import Supplies from './pages/Supplies';
+import Security from './pages/Security';
+import Pending from './pages/Pending';
+import Closings from './pages/Closings';
+import Inventories from './pages/Inventories';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -48,23 +57,43 @@ function AppRoutes() {
         <Route path="locations" element={<ProtectedRoute module="locations"><Locations /></ProtectedRoute>} />
         <Route path="entries" element={<ProtectedRoute module="entries"><Entries /></ProtectedRoute>} />
         <Route path="transfers" element={<ProtectedRoute module="transfers"><Transfers /></ProtectedRoute>} />
+        <Route path="supplies" element={<ProtectedRoute module="supplies"><Supplies /></ProtectedRoute>} />
         <Route path="stock" element={<ProtectedRoute module="stock"><Stock /></ProtectedRoute>} />
+        <Route path="consumption" element={<ProtectedRoute module="consumption"><Consumption /></ProtectedRoute>} />
+        <Route path="sales" element={<ProtectedRoute module="sales"><Sales /></ProtectedRoute>} />
         <Route path="reports" element={<ProtectedRoute module="reports"><Reports /></ProtectedRoute>} />
         <Route path="users" element={<ProtectedRoute module="users"><Users /></ProtectedRoute>} />
         <Route path="audit" element={<ProtectedRoute module="audit"><Audit /></ProtectedRoute>} />
+        <Route path="security" element={<ProtectedRoute module="security"><Security /></ProtectedRoute>} />
+        <Route path="pending" element={<ProtectedRoute module="pending"><Pending /></ProtectedRoute>} />
+        <Route path="closings" element={<ProtectedRoute module="closing"><Closings /></ProtectedRoute>} />
+        <Route path="inventories" element={<ProtectedRoute module="inventory"><Inventories /></ProtectedRoute>} />
       </Route>
     </Routes>
   );
 }
 
 export default function App() {
+  useEffect(() => {
+    const preventNumberWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLInputElement;
+      if (target?.type === 'number' && document.activeElement === target) {
+        event.preventDefault();
+        target.blur();
+      }
+    };
+    document.addEventListener('wheel', preventNumberWheel, { passive: false, capture: true });
+    return () => document.removeEventListener('wheel', preventNumberWheel, { capture: true });
+  }, []);
   return (
     <AuthProvider>
       <ToastProvider>
         <ConfirmProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
+          <ErrorBoundary>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </ErrorBoundary>
         </ConfirmProvider>
       </ToastProvider>
     </AuthProvider>
