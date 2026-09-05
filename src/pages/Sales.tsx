@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Minus, Plus, RotateCcw, Search, ShoppingCart, Trash2 } from 'lucide-react';
+import { Minus, Plus, Printer, RotateCcw, Search, ShoppingCart, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { hasActionPermission } from '../components/Layout';
 import { quantityStep } from '../lib/quantity';
 import { useConfirm } from '../components/ConfirmDialog';
+import RFIDCommandPanel, { IdentifiedCommand } from '../components/RFIDCommandPanel';
 
 type Product = { id: string; name: string; unit: string; sku?: string; barcode?: string; salePrice: number | null; availableQuantity: number };
 type CartItem = Product & { quantity: number; unitPrice: number };
 
 const paymentMethods = [
   ['PIX', 'PIX'], ['DINHEIRO', 'Dinheiro'], ['CARTAO_DEBITO', 'Cartão de débito'],
-  ['CARTAO_CREDITO', 'Cartão de crédito'], ['OUTRO', 'Outro'],
+  ['CARTAO_CREDITO', 'Cartão de crédito'], ['COMANDA', 'Comanda RFID'], ['OUTRO', 'Outro'],
 ];
 
 const money = (value: number | string) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -37,6 +38,15 @@ export default function Sales() {
   const [summary, setSummary] = useState({ completedSales: 0, totalAmount: 0 });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [selectedCommand, setSelectedCommand] = useState<IdentifiedCommand | null>(null);
+  const [operationStatus, setOperationStatus] = useState('');
+  const [printingSaleId, setPrintingSaleId] = useState<string | null>(null);
+
+  const selectCommand = (command: IdentifiedCommand | null) => {
+    setSelectedCommand(command);
+    setPaymentMethod(command ? 'COMANDA' : 'PIX');
+    setOperationStatus(command ? 'Comanda identificada e pronta para consumo' : '');
+  };
 
   const loadSales = async () => {
     try {
@@ -91,17 +101,35 @@ export default function Sales() {
   const finishSale = async () => {
     if (!locationId || !cart.length) return setError('Selecione o bar e adicione ao menos um produto');
     if (discount > subtotal) return setError('O desconto não pode superar o subtotal');
-    setSaving(true); setError('');
+    if (selectedCommand && total > Number(selectedCommand.valorTotal)) return setError(`Saldo insuficiente na comanda. Disponível: ${money(selectedCommand.valorTotal)}`);
+    setSaving(true); setError(''); setOperationStatus('Registrando venda');
     try {
       const sale = await api.createSale({
         locationId, paymentMethod, discount, customerName: customerName || null, notes: notes || null,
+        comandaId: selectedCommand?.comandaId || null, requestId: crypto.randomUUID(),
         items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, ...(canOverridePrice ? { unitPrice: item.unitPrice } : {}) })),
       });
       showToast('success', `Venda #${sale.number} concluída — ${money(sale.totalAmount)}`);
       setCart([]); setDiscount(0); setCustomerName(''); setNotes('');
       const refreshed = await api.getSaleProducts(locationId); setProducts(refreshed); loadSales();
+      setOperationStatus('Imprimindo comprovante da venda'); setPrintingSaleId(sale.id);
+      try {
+        await api.printSale(sale.id);
+        setOperationStatus('Venda concluída e comprovante impresso');
+        showToast('success', `Comprovante da venda #${sale.number} impresso`);
+      } catch (printError: any) {
+        setOperationStatus('Venda registrada, mas a impressão falhou');
+        showToast('warning', `${printError.message}. A venda foi mantida e pode ser reimpressa.`);
+      } finally { setPrintingSaleId(null); setSelectedCommand(null); setPaymentMethod('PIX'); }
     } catch (err: any) { setError(err.message); showToast('error', err.message); }
     finally { setSaving(false); }
+  };
+
+  const reprintSale = async (sale: any) => {
+    setPrintingSaleId(sale.id); setOperationStatus('Enviando reimpressão');
+    try { await api.printSale(sale.id, true); showToast('success', `Reimpressão da venda #${sale.number} enviada`); setOperationStatus('Reimpressão concluída'); }
+    catch (error: any) { showToast('error', error.message); setOperationStatus('Falha de impressão'); }
+    finally { setPrintingSaleId(null); }
   };
 
   const reverseSale = async (sale: any) => {
@@ -114,6 +142,9 @@ export default function Sales() {
   return <div className="space-y-6">
     <div><h1 className="text-2xl font-bold text-surface-900">Frente de Vendas</h1><p className="text-surface-500 mt-1">Baixa de produtos vendidos no estoque do bar</p></div>
     {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
+    {operationStatus && <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700">{operationStatus}</div>}
+
+    {canCreate && <RFIDCommandPanel enabled={canCreate} busy={saving} selected={selectedCommand} onSelect={selectCommand}/>}
 
     {canCreate && <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
       <section className="card p-4 lg:p-6 space-y-4">
@@ -140,7 +171,7 @@ export default function Sales() {
         </div>)}</div>
         {!cart.length && <p className="p-8 text-center text-surface-400">Carrinho vazio</p>}
         <div className="p-4 space-y-3 bg-surface-50 border-t">
-          <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs mb-1">Pagamento</label><select className="w-full" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>{paymentMethods.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div><label className="block text-xs mb-1">Desconto</label><input className="w-full" type="number" min="0" max={subtotal} step="0.01" value={discount || ''} onChange={(e) => setDiscount(Number(e.target.value))}/></div></div>
+          <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs mb-1">Pagamento</label><select className="w-full" value={paymentMethod} disabled={!!selectedCommand} onChange={(e) => setPaymentMethod(e.target.value)}>{paymentMethods.filter(([value]) => value !== 'COMANDA' || selectedCommand).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div><label className="block text-xs mb-1">Desconto</label><input className="w-full" type="number" min="0" max={subtotal} step="0.01" value={discount || ''} onChange={(e) => setDiscount(Number(e.target.value))}/></div></div>
           <input className="w-full" placeholder="Cliente (opcional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)}/><textarea className="w-full" rows={2} placeholder="Observações" value={notes} onChange={(e) => setNotes(e.target.value)}/>
           <div className="flex justify-between text-sm"><span>Subtotal</span><span>{money(subtotal)}</span></div><div className="flex justify-between text-lg font-bold"><span>Total</span><span className="text-brand-600">{money(total)}</span></div>
           <button className="btn-primary w-full disabled:opacity-50" disabled={saving || !cart.length} onClick={finishSale}>{saving ? 'Processando...' : 'Concluir venda'}</button>
@@ -149,9 +180,9 @@ export default function Sales() {
     </div>}
 
     <section className="card overflow-hidden"><div className="card-header flex justify-between"><h2 className="font-semibold">Vendas recentes</h2><div className="text-sm text-surface-500">{summary.completedSales} vendas • {money(summary.totalAmount)}</div></div>
-      <div className="divide-y md:hidden">{sales.map((sale) => <div key={sale.id} className="p-4"><div className="flex justify-between"><div><p className="font-semibold">Venda #{sale.number}</p><p className="text-xs text-surface-400">{sale.location.name} · {sale.registeredBy.name}</p></div><p className="font-semibold">{money(sale.totalAmount)}</p></div><div className="mt-3 flex items-center justify-between text-xs"><span className={sale.status === 'CONCLUIDA' ? 'text-emerald-600' : 'text-red-600'}>{sale.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'}</span><span className="text-surface-400">{new Date(sale.createdAt).toLocaleString('pt-BR')}</span>{canReverse && sale.status === 'CONCLUIDA' && <button onClick={() => reverseSale(sale)} className="text-red-600"><RotateCcw size={16}/></button>}</div></div>)}</div>
+      <div className="divide-y md:hidden">{sales.map((sale) => <div key={sale.id} className="p-4"><div className="flex justify-between"><div><p className="font-semibold">Venda #{sale.number}</p><p className="text-xs text-surface-400">{sale.location.name} · {sale.registeredBy.name}{sale.command && ' · RFID'}</p></div><p className="font-semibold">{money(sale.totalAmount)}</p></div><div className="mt-3 flex items-center justify-between text-xs"><span className={sale.status === 'CONCLUIDA' ? 'text-emerald-600' : 'text-red-600'}>{sale.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'}</span><span className="text-surface-400">{new Date(sale.createdAt).toLocaleString('pt-BR')}</span><span className="flex gap-3"><button disabled={printingSaleId === sale.id} title="Reimprimir" onClick={() => void reprintSale(sale)} className="text-brand-600 disabled:opacity-40"><Printer size={16}/></button>{canReverse && sale.status === 'CONCLUIDA' && <button onClick={() => reverseSale(sale)} className="text-red-600"><RotateCcw size={16}/></button>}</span></div></div>)}</div>
       <div className="hidden overflow-x-auto md:block"><table className="w-full text-sm"><thead><tr className="bg-surface-50 border-b">{['Número','Data','Bar','Operador','Itens','Pagamento','Total','Situação',''].map((heading) => <th key={heading} className="text-left px-4 py-3 text-xs uppercase text-surface-600">{heading}</th>)}</tr></thead>
-      <tbody>{sales.map((sale) => <tr key={sale.id} className="border-b border-surface-100"><td className="px-4 py-3 font-semibold">#{sale.number}</td><td className="px-4 py-3">{new Date(sale.createdAt).toLocaleString('pt-BR')}</td><td className="px-4 py-3">{sale.location.name}</td><td className="px-4 py-3">{sale.registeredBy.name}</td><td className="px-4 py-3">{sale.items.length}</td><td className="px-4 py-3">{paymentMethods.find(([value]) => value === sale.paymentMethod)?.[1] || sale.paymentMethod}</td><td className="px-4 py-3 font-semibold">{money(sale.totalAmount)}</td><td className="px-4 py-3">{sale.status === 'CONCLUIDA' ? <span className="text-emerald-600">Concluída</span> : <span className="text-red-600">Estornada</span>}</td><td className="px-4 py-3">{canReverse && sale.status === 'CONCLUIDA' && <button title="Estornar" className="text-red-600" onClick={() => reverseSale(sale)}><RotateCcw size={16}/></button>}</td></tr>)}</tbody></table></div>
+      <tbody>{sales.map((sale) => <tr key={sale.id} className="border-b border-surface-100"><td className="px-4 py-3 font-semibold">#{sale.number}{sale.command && <span className="ml-1 text-xs text-brand-600">RFID</span>}</td><td className="px-4 py-3">{new Date(sale.createdAt).toLocaleString('pt-BR')}</td><td className="px-4 py-3">{sale.location.name}</td><td className="px-4 py-3">{sale.registeredBy.name}</td><td className="px-4 py-3">{sale.items.length}</td><td className="px-4 py-3">{paymentMethods.find(([value]) => value === sale.paymentMethod)?.[1] || sale.paymentMethod}</td><td className="px-4 py-3 font-semibold">{money(sale.totalAmount)}</td><td className="px-4 py-3">{sale.status === 'CONCLUIDA' ? <span className="text-emerald-600">Concluída</span> : <span className="text-red-600">Estornada</span>}</td><td className="px-4 py-3"><span className="flex gap-3"><button disabled={printingSaleId === sale.id} title="Reimprimir" className="text-brand-600 disabled:opacity-40" onClick={() => void reprintSale(sale)}><Printer size={16}/></button>{canReverse && sale.status === 'CONCLUIDA' && <button title="Estornar" className="text-red-600" onClick={() => reverseSale(sale)}><RotateCcw size={16}/></button>}</span></td></tr>)}</tbody></table></div>
       {!sales.length && <p className="p-8 text-center text-surface-400">Nenhuma venda registrada</p>}
     </section>
   </div>;

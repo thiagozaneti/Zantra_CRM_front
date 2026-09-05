@@ -24,6 +24,8 @@ import Security from './pages/Security';
 import Pending from './pages/Pending';
 import Closings from './pages/Closings';
 import Inventories from './pages/Inventories';
+import Commands from './pages/Commands';
+import PrinterSettings from './pages/PrinterSettings';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -61,6 +63,7 @@ function AppRoutes() {
         <Route path="stock" element={<ProtectedRoute module="stock"><Stock /></ProtectedRoute>} />
         <Route path="consumption" element={<ProtectedRoute module="consumption"><Consumption /></ProtectedRoute>} />
         <Route path="sales" element={<ProtectedRoute module="sales"><Sales /></ProtectedRoute>} />
+        <Route path="commands" element={<ProtectedRoute module="commands"><Commands /></ProtectedRoute>} />
         <Route path="reports" element={<ProtectedRoute module="reports"><Reports /></ProtectedRoute>} />
         <Route path="users" element={<ProtectedRoute module="users"><Users /></ProtectedRoute>} />
         <Route path="audit" element={<ProtectedRoute module="audit"><Audit /></ProtectedRoute>} />
@@ -68,6 +71,7 @@ function AppRoutes() {
         <Route path="pending" element={<ProtectedRoute module="pending"><Pending /></ProtectedRoute>} />
         <Route path="closings" element={<ProtectedRoute module="closing"><Closings /></ProtectedRoute>} />
         <Route path="inventories" element={<ProtectedRoute module="inventory"><Inventories /></ProtectedRoute>} />
+        <Route path="printer" element={<ProtectedRoute module="printer"><PrinterSettings /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

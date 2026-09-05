@@ -1,5 +1,9 @@
 const API_BASE = '/api';
 
+export class ApiError extends Error {
+  constructor(message: string, public status: number, public code?: string) { super(message); this.name = 'ApiError'; }
+}
+
 async function request(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem('zantra_token');
   const headers: any = {
@@ -24,7 +28,10 @@ async function request(url: string, options: RequestInit = {}) {
         localStorage.setItem('zantra_token', data.accessToken);
         headers['Authorization'] = `Bearer ${data.accessToken}`;
         const retryRes = await fetch(`${API_BASE}${url}`, { ...options, headers });
-        if (!retryRes.ok) throw new Error('Erro na requisição');
+        if (!retryRes.ok) {
+          const retryError = await retryRes.json().catch(() => ({ error: 'Erro na requisição' }));
+          throw new ApiError(retryError.error || 'Erro na requisição', retryRes.status, retryError.code);
+        }
         return retryRes.json();
       }
     }
@@ -36,7 +43,7 @@ async function request(url: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
-    throw new Error(err.error || 'Erro na requisição');
+    throw new ApiError(err.error || 'Erro na requisição', res.status, err.code);
   }
 
   // Check if response is CSV
@@ -132,6 +139,19 @@ export const api = {
   getSaleProducts: (locationId: string) => request(`/sales/available-products?locationId=${encodeURIComponent(locationId)}`),
   createSale: (data: any) => request('/sales', { method: 'POST', body: JSON.stringify(data) }),
   reverseSale: (id: string, reason: string) => request(`/sales/${id}/reverse`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  identifyRFIDCard: (cardCode: string, signal?: AbortSignal) => request('/rfid/identify', { method: 'POST', body: JSON.stringify({ cardCode }), signal }),
+  getCommands: () => request('/commands'),
+  createCommand: (cardCode: string, initialValue = 0, paymentMethod?: string) => request('/commands', { method: 'POST', body: JSON.stringify({ cardCode, initialValue, paymentMethod }) }),
+  updateCommandStatus: (id: string, status: string) => request(`/commands/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  updateCommandValue: (id: string, operation: 'SET' | 'ADD', amount: number, reason: string, paymentMethod?: string) => request(`/commands/${id}/value`, { method: 'PATCH', body: JSON.stringify({ operation, amount, reason, paymentMethod }) }),
+  resetCommand: (id: string, reason?: string) => request(`/commands/${id}/reset`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getPrinterHealth: () => request('/printer/health'),
+  getPrinters: () => request('/printer/printers'),
+  getSelectedPrinter: () => request('/printer/selected'),
+  selectPrinter: (printerName: string) => request('/printer/select', { method: 'POST', body: JSON.stringify({ printerName }) }),
+  testPrinter: () => request('/printer/test', { method: 'POST' }),
+  printSale: (saleId: string, reprint = false) => request(`/printer/sales/${saleId}/print`, { method: 'POST', body: JSON.stringify({ reprint }) }),
+  getPrintJob: (jobId: string) => request(`/printer/jobs/${encodeURIComponent(jobId)}`),
 
   // Reports
   getReport: (type: string, params?: string) => request(`/reports/${type}${params ? `?${params}` : ''}`),

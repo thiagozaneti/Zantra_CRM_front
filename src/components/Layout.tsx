@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Package, MapPin, ArrowDownToLine, ArrowLeftRight,
   Warehouse, FileText, Users, Shield, LogOut, Menu, GlassWater, ShoppingCart,
-  PanelLeftClose, PanelLeftOpen, PackagePlus, KeyRound, Bell, ClipboardList, CalendarCheck, ClipboardCheck
+  PanelLeftClose, PanelLeftOpen, PackagePlus, KeyRound, Bell, ClipboardList, CalendarCheck, ClipboardCheck, CreditCard, Printer
 } from 'lucide-react';
 import icon from '../images/icon.png';
 import { api } from '../lib/api';
@@ -18,6 +18,8 @@ const modulePermissions: Record<string, string> = {
   pending: 'pending:view',
   closing: 'closing:view',
   inventory: 'inventory:view',
+  commands: 'commands:view',
+  printer: 'printer:view',
 };
 
 const navItems = [
@@ -31,11 +33,13 @@ const navItems = [
   { to: '/inventories', icon: ClipboardCheck, label: 'Inventários', module: 'inventory', group: 'Controle' },
   { to: '/consumption', icon: GlassWater, label: 'Consumo Interno', module: 'consumption', group: 'Movimentações' },
   { to: '/sales', icon: ShoppingCart, label: 'Frente de Vendas', module: 'sales', group: 'Movimentações' },
+  { to: '/commands', icon: CreditCard, label: 'Comandas', module: 'commands', group: 'Movimentações' },
   { to: '/pending', icon: ClipboardList, label: 'Pendências', module: 'pending', group: 'Controle' },
   { to: '/closings', icon: CalendarCheck, label: 'Fechamentos', module: 'closing', group: 'Controle' },
   { to: '/reports', icon: FileText, label: 'Relatórios', module: 'reports', group: 'Controle' },
   { to: '/users', icon: Users, label: 'Usuários', module: 'users', group: 'Administração' },
   { to: '/audit', icon: Shield, label: 'Auditoria', module: 'audit', group: 'Administração' },
+  { to: '/printer', icon: Printer, label: 'Impressora', module: 'printer', group: 'Administração' },
   { to: '/security', icon: KeyRound, label: 'Segurança', module: 'security', group: 'Administração' },
 ];
 

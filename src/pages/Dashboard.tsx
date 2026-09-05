@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   AlertTriangle, ArrowDownToLine, ArrowLeftRight, Ban, Box, CircleDollarSign,
-  Download, Package, RefreshCw, ShoppingCart, Utensils, Warehouse,
+  Download, Package, RefreshCw, ShoppingCart, Utensils, Warehouse, WalletCards,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import { hasActionPermission } from '../components/Layout';
 
 const money = (value: number | string) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const rechargePaymentLabels: Record<string, string> = { PIX: 'PIX', DINHEIRO: 'Dinheiro', CARTAO_DEBITO: 'Cartão de débito', CARTAO_CREDITO: 'Cartão de crédito', CHEQUE: 'Cheque' };
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -92,6 +93,20 @@ export default function Dashboard() {
       </Panel>
     </section>
 
+    <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.55fr_1fr]">
+      <Panel title="Recargas de comandas" subtitle="Últimos 7 dias">
+        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <DashboardStat label="Comandas ativas" value={data.commands?.active || 0}/>
+          <DashboardStat label="Saldo disponível" value={money(data.commands?.totalBalance || 0)}/>
+          <DashboardStat label="Carregado hoje" value={money(data.commands?.rechargesToday?.total || 0)} detail={`${data.commands?.rechargesToday?.count || 0} recarga(s)`}/>
+        </div>
+        <BarChart data={(data.commands?.rechargesByDay || []).map((day: any) => ({ label: day.label, value: day.total, color: 'bg-cyan-500' }))}/>
+      </Panel>
+      <ActivityPanel title="Últimas recargas" icon={WalletCards} empty="Nenhuma recarga registrada">
+        {(data.commands?.recentRecharges || []).map((recharge: any) => <ActivityRow key={recharge.id} title={`Comanda ${recharge.command.cardCode}`} subtitle={`${recharge.user.name} · ${rechargePaymentLabels[recharge.paymentMethod] || 'Pagamento não informado'}`} value={money(recharge.movedValue)} date={dateTime(recharge.createdAt)}/>) }
+      </ActivityPanel>
+    </section>
+
     <Panel title="Estoque por local" subtitle="Distribuição atual">
       <div className="grid gap-6 md:grid-cols-3">
         <StockGroup title="Câmaras frias" icon={Warehouse} data={coldRooms}/>
@@ -135,6 +150,10 @@ function ActivityPanel({ title, icon: Icon, empty, children }: any) {
 
 function ActivityRow({ title, subtitle, value, date, danger = false }: any) {
   return <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-surface-100 py-3 last:border-0"><div className="min-w-0"><p className="truncate text-sm font-medium text-surface-800">{title}</p><p className="mt-0.5 truncate text-xs text-surface-400">{subtitle}</p></div><div className="text-right"><p className={`text-xs font-semibold tabular-nums ${danger ? 'text-red-600' : 'text-surface-700'}`}>{value}</p><p className="mt-0.5 text-[10px] text-surface-400">{date}</p></div></div>;
+}
+
+function DashboardStat({ label, value, detail }: { label: string; value: string | number; detail?: string }) {
+  return <div className="rounded-lg border border-surface-100 bg-surface-50 px-3 py-2.5"><p className="text-[11px] font-medium text-surface-500">{label}</p><p className="mt-1 truncate text-base font-semibold tabular-nums text-surface-900">{value}</p>{detail && <p className="mt-0.5 text-[10px] text-surface-400">{detail}</p>}</div>;
 }
 
 function Empty({ text }: { text: string }) { return <p className="flex h-24 items-center justify-center text-center text-xs text-surface-400">{text}</p>; }

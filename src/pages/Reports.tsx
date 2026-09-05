@@ -15,8 +15,11 @@ const reportTypes = [
   { id: 'adjustments', label: 'Divergências e Ajustes' },
   { id: 'consumption', label: 'Consumo Interno' },
   { id: 'sales', label: 'Vendas' },
+  { id: 'command-recharges', label: 'Recargas de comandas' },
   { id: 'inventories', label: 'Inventários físicos' },
 ];
+
+const rechargePaymentMethods: Record<string, string> = { PIX: 'PIX', DINHEIRO: 'Dinheiro', CARTAO_DEBITO: 'Cartão de débito', CARTAO_CREDITO: 'Cartão de crédito', CHEQUE: 'Cheque' };
 
 export default function Reports() {
   const canExport = hasActionPermission('reports:export');
@@ -32,6 +35,7 @@ export default function Reports() {
   const [productId, setProductId] = useState('');
   const [locationId, setLocationId] = useState('');
   const [userId, setUserId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
 
   useEffect(() => { loadRefs(); }, []);
 
@@ -57,6 +61,7 @@ export default function Reports() {
       if (productId) params.set('productId', productId);
       if (locationId) params.set('locationId', locationId);
       if (userId) params.set('userId', userId);
+      if (selectedReport === 'command-recharges' && paymentMethod) params.set('paymentMethod', paymentMethod);
       if (selectedReport === 'employee-movements') params.set('userId', userId);
 
       const result = await api.getReport(selectedReport, params.toString());
@@ -71,6 +76,7 @@ export default function Reports() {
       case 'transfers': return ['Data', 'Produto', 'Qtd', 'Origem', 'Destino', 'Retirado por', 'Recebido por'];
       case 'consumption': return ['Data', 'Local', 'Tipo', 'Produto', 'Qtd', 'Unidade', 'Responsável', 'Motivo', 'Situação'];
       case 'sales': return ['Número', 'Data', 'Bar', 'Operador', 'Pagamento', 'Subtotal', 'Desconto', 'Total', 'Situação'];
+      case 'command-recharges': return ['Data', 'Comanda', 'Responsável', 'Pagamento', 'Valor carregado', 'Saldo anterior', 'Saldo após', 'Motivo'];
       case 'stock': return ['Produto', 'SKU', 'Categoria', 'Local', 'Tipo', 'Qtd', 'Mín', 'Unidade'];
       case 'inventories': return ['Inventário', 'Data', 'Local', 'Produto', 'Esperado', 'Contado', 'Diferença', 'Impacto estimado', 'Situação'];
       case 'product-history':
@@ -110,6 +116,8 @@ export default function Reports() {
         }
         case 'sales':
           return [`#${item.number}`, new Date(item.createdAt).toLocaleString('pt-BR'), item.location?.name || '', item.registeredBy?.name || '', item.paymentMethod, Number(item.subtotal).toFixed(2), Number(item.discount).toFixed(2), Number(item.totalAmount).toFixed(2), item.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'];
+        case 'command-recharges':
+          return [new Date(item.createdAt).toLocaleString('pt-BR'), item.command?.cardCode || '', item.user?.name || '', rechargePaymentMethods[item.paymentMethod] || item.paymentMethod || 'Não informado', Number(item.movedValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.previousValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.newValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), item.reason || ''];
         case 'stock':
           return [
             item.product?.name || '',
@@ -265,12 +273,21 @@ export default function Reports() {
                 </select>
               </div>
             )}
-            {(selectedReport === 'employee-movements' || selectedReport === 'adjustments' || selectedReport === 'sales') && (
+            {(selectedReport === 'employee-movements' || selectedReport === 'adjustments' || selectedReport === 'sales' || selectedReport === 'command-recharges') && (
               <div>
                 <label className="block text-xs font-medium text-surface-500 mb-1.5">Funcionário</label>
                 <select value={userId} onChange={(e) => setUserId(e.target.value)} className="w-full">
                   <option value="">Todos</option>
                   {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+            )}
+            {selectedReport === 'command-recharges' && (
+              <div>
+                <label className="block text-xs font-medium text-surface-500 mb-1.5">Forma de pagamento</label>
+                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full">
+                  <option value="">Todas</option>
+                  {Object.entries(rechargePaymentMethods).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </div>
             )}
@@ -297,6 +314,10 @@ export default function Reports() {
       </div>
 
       {/* Results */}
+      {selectedReport === 'command-recharges' && data.length > 0 && <div className="grid gap-3 sm:grid-cols-2">
+        <div className="card p-4"><p className="text-xs font-medium text-surface-500">Recargas encontradas</p><p className="mt-1 text-2xl font-semibold text-surface-900">{data.length}</p></div>
+        <div className="card p-4"><p className="text-xs font-medium text-surface-500">Total carregado</p><p className="mt-1 text-2xl font-semibold text-emerald-700">{data.reduce((sum, item) => sum + Number(item.movedValue || 0), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>
+      </div>}
       <div className="card">
         {loading ? (
           <div className="flex items-center justify-center py-12">
