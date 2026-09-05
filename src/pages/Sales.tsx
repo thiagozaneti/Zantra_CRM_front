@@ -11,8 +11,8 @@ type Product = { id: string; name: string; unit: string; sku?: string; barcode?:
 type CartItem = Product & { quantity: number; unitPrice: number };
 
 const paymentMethods = [
-  ['PIX', 'PIX'], ['CASH', 'Dinheiro'], ['DEBIT_CARD', 'Cartão de débito'],
-  ['CREDIT_CARD', 'Cartão de crédito'], ['OTHER', 'Outro'],
+  ['PIX', 'PIX'], ['DINHEIRO', 'Dinheiro'], ['CARTAO_DEBITO', 'Cartão de débito'],
+  ['CARTAO_CREDITO', 'Cartão de crédito'], ['OUTRO', 'Outro'],
 ];
 
 const money = (value: number | string) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -23,7 +23,7 @@ export default function Sales() {
   const { prompt } = useConfirm();
   const canCreate = hasActionPermission('sales:create');
   const canReverse = hasActionPermission('sales:reverse');
-  const canOverridePrice = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const canOverridePrice = user?.role === 'ADMINISTRADOR' || user?.role === 'GERENTE';
   const [bars, setBars] = useState<any[]>([]);
   const [locationId, setLocationId] = useState(user?.locations?.length === 1 ? user.locations[0].id : user?.assignedLocationId || '');
   const [products, setProducts] = useState<Product[]>([]);
@@ -50,7 +50,7 @@ export default function Sales() {
 
   useEffect(() => {
     api.getReferenceLocations().then((data) => {
-      data = data.filter((location: any) => location.allowsSale && (user?.role !== 'SALES_FRONT' || (user.locations?.map((item) => item.id) || (user.assignedLocationId ? [user.assignedLocationId] : [])).includes(location.id)));
+      data = data.filter((location: any) => location.allowsSale && (user?.role !== 'FRENTE_VENDAS' || (user.locations?.map((item) => item.id) || (user.assignedLocationId ? [user.assignedLocationId] : [])).includes(location.id)));
       setBars(data);
       if (!locationId && data.length === 1) setLocationId(data[0].id);
     }).catch(() => undefined);
@@ -118,7 +118,7 @@ export default function Sales() {
     {canCreate && <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
       <section className="card p-4 lg:p-6 space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
-          <div><label className="block text-sm font-medium mb-1.5">Local de venda *</label><select className="w-full" value={locationId} disabled={user?.role === 'SALES_FRONT' && bars.length === 1} onChange={(e) => setLocationId(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
+          <div><label className="block text-sm font-medium mb-1.5">Local de venda *</label><select className="w-full" value={locationId} disabled={user?.role === 'FRENTE_VENDAS' && bars.length === 1} onChange={(e) => setLocationId(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
           <div><label className="block text-sm font-medium mb-1.5">Buscar produto / código</label><div className="relative"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"/><input className="w-full pl-10" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nome, SKU ou código de barras" disabled={!locationId}/></div></div>
         </div>
         {locationId && <div className="flex flex-wrap gap-3 text-sm"><span className="bg-brand-50 text-brand-700 border border-brand-200 px-3 py-2 rounded-lg"><strong>{products.length}</strong> produtos com saldo</span><span className="bg-surface-50 text-surface-700 border border-surface-200 px-3 py-2 rounded-lg"><strong>{totalUnitsAvailable.toLocaleString('pt-BR')}</strong> unidades disponíveis no bar</span></div>}
@@ -149,9 +149,9 @@ export default function Sales() {
     </div>}
 
     <section className="card overflow-hidden"><div className="card-header flex justify-between"><h2 className="font-semibold">Vendas recentes</h2><div className="text-sm text-surface-500">{summary.completedSales} vendas • {money(summary.totalAmount)}</div></div>
-      <div className="divide-y md:hidden">{sales.map((sale) => <div key={sale.id} className="p-4"><div className="flex justify-between"><div><p className="font-semibold">Venda #{sale.number}</p><p className="text-xs text-surface-400">{sale.location.name} · {sale.registeredBy.name}</p></div><p className="font-semibold">{money(sale.totalAmount)}</p></div><div className="mt-3 flex items-center justify-between text-xs"><span className={sale.status === 'COMPLETED' ? 'text-emerald-600' : 'text-red-600'}>{sale.status === 'COMPLETED' ? 'Concluída' : 'Estornada'}</span><span className="text-surface-400">{new Date(sale.createdAt).toLocaleString('pt-BR')}</span>{canReverse && sale.status === 'COMPLETED' && <button onClick={() => reverseSale(sale)} className="text-red-600"><RotateCcw size={16}/></button>}</div></div>)}</div>
+      <div className="divide-y md:hidden">{sales.map((sale) => <div key={sale.id} className="p-4"><div className="flex justify-between"><div><p className="font-semibold">Venda #{sale.number}</p><p className="text-xs text-surface-400">{sale.location.name} · {sale.registeredBy.name}</p></div><p className="font-semibold">{money(sale.totalAmount)}</p></div><div className="mt-3 flex items-center justify-between text-xs"><span className={sale.status === 'CONCLUIDA' ? 'text-emerald-600' : 'text-red-600'}>{sale.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'}</span><span className="text-surface-400">{new Date(sale.createdAt).toLocaleString('pt-BR')}</span>{canReverse && sale.status === 'CONCLUIDA' && <button onClick={() => reverseSale(sale)} className="text-red-600"><RotateCcw size={16}/></button>}</div></div>)}</div>
       <div className="hidden overflow-x-auto md:block"><table className="w-full text-sm"><thead><tr className="bg-surface-50 border-b">{['Número','Data','Bar','Operador','Itens','Pagamento','Total','Situação',''].map((heading) => <th key={heading} className="text-left px-4 py-3 text-xs uppercase text-surface-600">{heading}</th>)}</tr></thead>
-      <tbody>{sales.map((sale) => <tr key={sale.id} className="border-b border-surface-100"><td className="px-4 py-3 font-semibold">#{sale.number}</td><td className="px-4 py-3">{new Date(sale.createdAt).toLocaleString('pt-BR')}</td><td className="px-4 py-3">{sale.location.name}</td><td className="px-4 py-3">{sale.registeredBy.name}</td><td className="px-4 py-3">{sale.items.length}</td><td className="px-4 py-3">{paymentMethods.find(([value]) => value === sale.paymentMethod)?.[1] || sale.paymentMethod}</td><td className="px-4 py-3 font-semibold">{money(sale.totalAmount)}</td><td className="px-4 py-3">{sale.status === 'COMPLETED' ? <span className="text-emerald-600">Concluída</span> : <span className="text-red-600">Estornada</span>}</td><td className="px-4 py-3">{canReverse && sale.status === 'COMPLETED' && <button title="Estornar" className="text-red-600" onClick={() => reverseSale(sale)}><RotateCcw size={16}/></button>}</td></tr>)}</tbody></table></div>
+      <tbody>{sales.map((sale) => <tr key={sale.id} className="border-b border-surface-100"><td className="px-4 py-3 font-semibold">#{sale.number}</td><td className="px-4 py-3">{new Date(sale.createdAt).toLocaleString('pt-BR')}</td><td className="px-4 py-3">{sale.location.name}</td><td className="px-4 py-3">{sale.registeredBy.name}</td><td className="px-4 py-3">{sale.items.length}</td><td className="px-4 py-3">{paymentMethods.find(([value]) => value === sale.paymentMethod)?.[1] || sale.paymentMethod}</td><td className="px-4 py-3 font-semibold">{money(sale.totalAmount)}</td><td className="px-4 py-3">{sale.status === 'CONCLUIDA' ? <span className="text-emerald-600">Concluída</span> : <span className="text-red-600">Estornada</span>}</td><td className="px-4 py-3">{canReverse && sale.status === 'CONCLUIDA' && <button title="Estornar" className="text-red-600" onClick={() => reverseSale(sale)}><RotateCcw size={16}/></button>}</td></tr>)}</tbody></table></div>
       {!sales.length && <p className="p-8 text-center text-surface-400">Nenhuma venda registrada</p>}
     </section>
   </div>;

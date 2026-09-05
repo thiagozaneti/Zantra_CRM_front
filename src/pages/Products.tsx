@@ -9,7 +9,7 @@ import { Pagination } from '../components/DataControls';
 
 interface Product {
   id: string; name: string; category: string; unit: string; sku: string;
-  barcode: string; brand: string; supplier: string; salePrice: number | null; supplyFlow: 'COLD_ROOM_REQUIRED' | 'DIRECT_TO_BAR_ALLOWED'; minStock: number;
+  barcode: string; brand: string; supplier: string; salePrice: number | null; supplyFlow: 'CAMARA_FRIA_OBRIGATORIA' | 'DIRETO_BAR_PERMITIDO'; minStock: number;
   active: boolean; notes: string; createdAt: string;
 }
 
@@ -26,7 +26,7 @@ export default function Products() {
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [form, setForm] = useState({ name: '', category: '', unit: 'un', sku: '', barcode: '', brand: '', supplier: '', salePrice: null as number | null, supplyFlow: 'COLD_ROOM_REQUIRED', minStock: 0, notes: '' });
+  const [form, setForm] = useState({ name: '', category: '', unit: 'un', sku: '', barcode: '', brand: '', supplier: '', salePrice: null as number | null, supplyFlow: 'CAMARA_FRIA_OBRIGATORIA', minStock: 0, notes: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -51,8 +51,8 @@ export default function Products() {
     try { const cats = await api.getCategories(); setCategories(cats); } catch {}
   };
 
-  const openNew = () => { setEditingProduct(null); setForm({ name: '', category: '', unit: 'un', sku: '', barcode: '', brand: '', supplier: '', salePrice: null, supplyFlow: 'COLD_ROOM_REQUIRED', minStock: 0, notes: '' }); setShowModal(true); setError(''); };
-  const openEdit = (p: Product) => { setEditingProduct(p); setForm({ name: p.name, category: p.category || '', unit: p.unit, sku: p.sku || '', barcode: p.barcode || '', brand: p.brand || '', supplier: p.supplier || '', salePrice: p.salePrice === null ? null : Number(p.salePrice), supplyFlow: p.supplyFlow || 'COLD_ROOM_REQUIRED', minStock: p.minStock, notes: p.notes || '' }); setShowModal(true); setError(''); };
+  const openNew = () => { setEditingProduct(null); setForm({ name: '', category: '', unit: 'un', sku: '', barcode: '', brand: '', supplier: '', salePrice: null, supplyFlow: 'CAMARA_FRIA_OBRIGATORIA', minStock: 0, notes: '' }); setShowModal(true); setError(''); };
+  const openEdit = (p: Product) => { setEditingProduct(p); setForm({ name: p.name, category: p.category || '', unit: p.unit, sku: p.sku || '', barcode: p.barcode || '', brand: p.brand || '', supplier: p.supplier || '', salePrice: p.salePrice === null ? null : Number(p.salePrice), supplyFlow: p.supplyFlow || 'CAMARA_FRIA_OBRIGATORIA', minStock: p.minStock, notes: p.notes || '' }); setShowModal(true); setError(''); };
 
   const handleSave = async () => {
     if (!form.name || !form.unit) { setError('Nome e unidade são obrigatórios'); return; }
@@ -125,7 +125,7 @@ export default function Products() {
                 <div>
                   <h3 className="font-medium text-surface-900">{p.name}</h3>
                 <p className="text-xs text-surface-500">{p.category || 'Sem categoria'}</p>
-                  <p className="text-xs text-brand-600">{p.supplyFlow === 'DIRECT_TO_BAR_ALLOWED' ? 'Entrada direta permitida' : 'Câmara obrigatória'}</p>
+                  <p className="text-xs text-brand-600">{p.supplyFlow === 'DIRETO_BAR_PERMITIDO' ? 'Entrada direta permitida' : 'Câmara obrigatória'}</p>
                 </div>
               </div>
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-500'}`}>
@@ -192,7 +192,7 @@ export default function Products() {
                   <td className="px-4 py-3 text-surface-600">{p.brand || '-'}</td>
                   <td className="px-4 py-3 text-surface-600">{p.minStock}</td>
                   <td className="px-4 py-3 font-medium">{p.salePrice === null ? '-' : Number(p.salePrice).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                  <td className="px-4 py-3 text-xs"><span className={p.supplyFlow === 'DIRECT_TO_BAR_ALLOWED' ? 'text-emerald-700' : 'text-blue-700'}>{p.supplyFlow === 'DIRECT_TO_BAR_ALLOWED' ? 'Direto ao bar permitido' : 'Câmara obrigatória'}</span></td>
+                  <td className="px-4 py-3 text-xs"><span className={p.supplyFlow === 'DIRETO_BAR_PERMITIDO' ? 'text-emerald-700' : 'text-blue-700'}>{p.supplyFlow === 'DIRETO_BAR_PERMITIDO' ? 'Direto ao bar permitido' : 'Câmara obrigatória'}</span></td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-100 text-surface-500'}`}>
                       {p.active ? 'Ativo' : 'Inativo'}
@@ -264,7 +264,7 @@ export default function Products() {
                   <input type="number" min="0" step={quantityStep(form.unit)} value={form.minStock} onChange={(e) => setForm({ ...form, minStock: Number(e.target.value) })} className="w-full" />
                 </div>
                 <div><label className="block text-sm font-medium text-surface-700 mb-1.5">Preço de Venda</label><input type="number" min="0" step="0.01" value={form.salePrice ?? ''} onChange={(e) => setForm({ ...form, salePrice: e.target.value === '' ? null : Number(e.target.value) })} className="w-full" placeholder="R$ 0,00" /></div>
-                <div className="col-span-2"><label className="block text-sm font-medium text-surface-700 mb-1.5">Fluxo de abastecimento *</label><select value={form.supplyFlow} onChange={(e) => setForm({ ...form, supplyFlow: e.target.value })} className="w-full"><option value="COLD_ROOM_REQUIRED">Obrigatório passar pela câmara fria</option><option value="DIRECT_TO_BAR_ALLOWED">Entrada direta no bar permitida</option></select><p className="text-xs text-surface-500 mt-1">Produtos com entrada direta também podem ser recebidos em uma câmara, quando necessário.</p></div>
+                <div className="col-span-2"><label className="block text-sm font-medium text-surface-700 mb-1.5">Fluxo de abastecimento *</label><select value={form.supplyFlow} onChange={(e) => setForm({ ...form, supplyFlow: e.target.value })} className="w-full"><option value="CAMARA_FRIA_OBRIGATORIA">Obrigatório passar pela câmara fria</option><option value="DIRETO_BAR_PERMITIDO">Entrada direta no bar permitida</option></select><p className="text-xs text-surface-500 mt-1">Produtos com entrada direta também podem ser recebidos em uma câmara, quando necessário.</p></div>
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-surface-700 mb-1.5">Observações</label>
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full" rows={2} />

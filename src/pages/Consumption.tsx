@@ -8,11 +8,11 @@ import { useConfirm } from '../components/ConfirmDialog';
 
 const consumptionTypes = [
   { value: 'NORMAL', label: 'Uso normal' },
-  { value: 'PRODUCTION', label: 'Produção' },
-  { value: 'LOSS', label: 'Perda' },
-  { value: 'DAMAGE', label: 'Avaria' },
-  { value: 'COURTESY', label: 'Cortesia' },
-  { value: 'OTHER', label: 'Outros' },
+  { value: 'PRODUCAO', label: 'Produção' },
+  { value: 'PERDA', label: 'Perda' },
+  { value: 'AVARIA', label: 'Avaria' },
+  { value: 'CORTESIA', label: 'Cortesia' },
+  { value: 'OUTRO', label: 'Outros' },
 ];
 
 const typeLabel = (value: string) => consumptionTypes.find((item) => item.value === value)?.label || value;
@@ -48,7 +48,7 @@ export default function Consumption() {
   };
 
   const selectedProduct = products.find((product) => product.id === form.productId);
-  const reasonRequired = ['LOSS', 'DAMAGE', 'OTHER'].includes(form.type);
+  const reasonRequired = ['PERDA', 'AVARIA', 'OUTRO'].includes(form.type);
 
   const save = async () => {
     if (!form.locationId || !form.productId || form.quantity <= 0) return setError('Local, produto e quantidade são obrigatórios');

@@ -105,24 +105,24 @@ export default function Reports() {
             item.receivedBy?.name || '',
           ];
         case 'consumption': {
-          const labels: Record<string, string> = { NORMAL: 'Uso normal', PRODUCTION: 'Produção', LOSS: 'Perda', DAMAGE: 'Avaria', COURTESY: 'Cortesia', OTHER: 'Outros' };
+          const labels: Record<string, string> = { NORMAL: 'Uso normal', PRODUCAO: 'Produção', PERDA: 'Perda', AVARIA: 'Avaria', CORTESIA: 'Cortesia', OUTRO: 'Outros' };
           return [new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', labels[item.type] || item.type, item.product?.name || '', item.quantity, item.product?.unit || '', item.registeredBy?.name || '', item.reason || '', item.reversedAt ? 'Estornado' : 'Efetivado'];
         }
         case 'sales':
-          return [`#${item.number}`, new Date(item.createdAt).toLocaleString('pt-BR'), item.location?.name || '', item.registeredBy?.name || '', item.paymentMethod, Number(item.subtotal).toFixed(2), Number(item.discount).toFixed(2), Number(item.totalAmount).toFixed(2), item.status === 'COMPLETED' ? 'Concluída' : 'Estornada'];
+          return [`#${item.number}`, new Date(item.createdAt).toLocaleString('pt-BR'), item.location?.name || '', item.registeredBy?.name || '', item.paymentMethod, Number(item.subtotal).toFixed(2), Number(item.discount).toFixed(2), Number(item.totalAmount).toFixed(2), item.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'];
         case 'stock':
           return [
             item.product?.name || '',
             item.product?.sku || '',
             item.product?.category || '',
             item.location?.name || '',
-            item.location?.type === 'COLD_ROOM' ? 'Câmara Fria' : item.location?.type === 'UNASSIGNED' ? 'Sem destino' : item.location?.type === 'BAR' ? 'Bar' : 'Outro local',
+            item.location?.type === 'CAMARA_FRIA' ? 'Câmara Fria' : item.location?.type === 'NAO_ATRIBUIDO' ? 'Sem destino' : item.location?.type === 'BAR' ? 'Bar' : 'Outro local',
             item.quantity,
             item.product?.minStock || 0,
             item.product?.unit || '',
           ];
         case 'inventories': {
-          const inventoryLabels: Record<string, string> = { COUNTING: 'Em contagem', PENDING_APPROVAL: 'Aguardando aprovação', RECOUNT_REQUIRED: 'Recontagem', APPLIED: 'Aplicado', REJECTED: 'Rejeitado' };
+          const inventoryLabels: Record<string, string> = { EM_CONTAGEM: 'Em contagem', PENDENTE_APROVACAO: 'Aguardando aprovação', RECONTAGEM_NECESSARIA: 'Recontagem', APLICADO: 'Aplicado', REJEITADO: 'Rejeitado' };
           return [`#${item.inventoryNumber}`, new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', item.product?.name || '', item.expectedQuantity ?? '', item.countedQuantity ?? '', item.difference ?? '', Number(item.financialDifference || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), inventoryLabels[item.status] || item.status];
         }
         default:

@@ -7,8 +7,8 @@ import { useConfirm } from '../components/ConfirmDialog';
 import { quantityStep } from '../lib/quantity';
 import { useAuth } from '../context/AuthContext';
 
-const statusLabels: Record<string, string> = { REQUESTED: 'Aguardando resposta', PREPARING: 'Aceito / em separação', SENT: 'Enviado', RECEIVED: 'Recebido', REJECTED: 'Recusado', CANCELLED: 'Cancelado' };
-const statusColors: Record<string, string> = { REQUESTED: 'bg-amber-50 text-amber-700', PREPARING: 'bg-blue-50 text-blue-700', SENT: 'bg-purple-50 text-purple-700', RECEIVED: 'bg-emerald-50 text-emerald-700', REJECTED: 'bg-red-50 text-red-700', CANCELLED: 'bg-surface-100 text-surface-600' };
+const statusLabels: Record<string, string> = { SOLICITADA: 'Aguardando resposta', EM_PREPARACAO: 'Aceito / em separação', ENVIADA: 'Enviado', RECEBIDA: 'Recebido', REJEITADA: 'Recusado', CANCELADA: 'Cancelado' };
+const statusColors: Record<string, string> = { SOLICITADA: 'bg-amber-50 text-amber-700', EM_PREPARACAO: 'bg-blue-50 text-blue-700', ENVIADA: 'bg-purple-50 text-purple-700', RECEBIDA: 'bg-emerald-50 text-emerald-700', REJEITADA: 'bg-red-50 text-red-700', CANCELADA: 'bg-surface-100 text-surface-600' };
 
 export default function Supplies() {
   const { user } = useAuth();
@@ -23,7 +23,7 @@ export default function Supplies() {
   const { showToast } = useToast();
   const { confirm, prompt } = useConfirm();
   const userLocationIds = user?.locations?.map((location) => location.id) || (user?.assignedLocationId ? [user.assignedLocationId] : []);
-  const manager = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const manager = user?.role === 'ADMINISTRADOR' || user?.role === 'GERENTE';
 
   const load = async () => { try { const result = await api.getSupplyRequests(); setRequests(result.data); } catch (err: any) { showToast('error', err.message); } };
   useEffect(() => { load(); Promise.all([api.getReferenceLocations(), api.getReferenceProducts()]).then(([locs, prods]) => { setLocations(locs); setProducts(prods); }); }, []);
@@ -54,9 +54,9 @@ export default function Supplies() {
       return <div key={request.id} className="rounded-xl border bg-white p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">Solicitação #{request.number}</p><p className="text-sm text-surface-600 mt-0.5"><strong>{request.source?.name}</strong> → <strong>{request.destination.name}</strong></p><p className="text-xs text-surface-500 mt-1">Solicitado por {request.requestedBy.name}{request.handledBy ? ` • Respondido por ${request.handledBy.name}` : ''}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusColors[request.status]}`}>{statusLabels[request.status]}</span></div>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">{request.items.map((item: any) => <span key={item.id} className="rounded bg-surface-100 px-2 py-1">{item.product.name}: {item.quantity} {item.product.unit}</span>)}</div>
         {request.notes && <p className="mt-3 text-sm text-surface-600"><strong>Observação:</strong> {request.notes}</p>}
-        {request.responseMessage && <div className={`mt-3 rounded-lg border p-3 text-sm ${request.status === 'REJECTED' ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}><strong>Resposta do local:</strong> {request.responseMessage}</div>}
-        {!request.source && request.status === 'REQUESTED' && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">Solicitação antiga sem origem definida. Cancele-a e abra um novo pedido direcionado.</p>}
-        <div className="mt-4 flex flex-wrap gap-2">{request.source && request.status === 'REQUESTED' && sourceResponsible && <><button className="btn-primary" onClick={() => act(request, 'accept')}>Aceitar e separar</button><button className="btn-secondary text-red-600" onClick={() => act(request, 'reject')}>Recusar / sem estoque</button></>}{request.status === 'REQUESTED' && (requester || manager) && <button className="btn-secondary" onClick={() => act(request, 'cancel')}>Cancelar pedido</button>}{request.status === 'PREPARING' && sourceResponsible && <button className="btn-primary" onClick={() => act(request, 'send')}>Confirmar envio</button>}{request.status === 'SENT' && destinationResponsible && <button className="btn-primary" onClick={() => act(request, 'receive')}>Confirmar recebimento</button>}</div>
+        {request.responseMessage && <div className={`mt-3 rounded-lg border p-3 text-sm ${request.status === 'REJEITADA' ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}><strong>Resposta do local:</strong> {request.responseMessage}</div>}
+        {!request.source && request.status === 'SOLICITADA' && <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">Solicitação antiga sem origem definida. Cancele-a e abra um novo pedido direcionado.</p>}
+        <div className="mt-4 flex flex-wrap gap-2">{request.source && request.status === 'SOLICITADA' && sourceResponsible && <><button className="btn-primary" onClick={() => act(request, 'accept')}>Aceitar e separar</button><button className="btn-secondary text-red-600" onClick={() => act(request, 'reject')}>Recusar / sem estoque</button></>}{request.status === 'SOLICITADA' && (requester || manager) && <button className="btn-secondary" onClick={() => act(request, 'cancel')}>Cancelar pedido</button>}{request.status === 'EM_PREPARACAO' && sourceResponsible && <button className="btn-primary" onClick={() => act(request, 'send')}>Confirmar envio</button>}{request.status === 'ENVIADA' && destinationResponsible && <button className="btn-primary" onClick={() => act(request, 'receive')}>Confirmar recebimento</button>}</div>
       </div>;
     })}</div>
     {!requests.length && <div className="rounded-xl border border-dashed bg-white py-12 text-center text-surface-500">Nenhuma solicitação de abastecimento encontrada.</div>}

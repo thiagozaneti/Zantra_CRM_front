@@ -110,7 +110,7 @@ export default function Dashboard() {
           {data.recentTransfers.map((transfer: any) => <ActivityRow key={transfer.id} title={transfer.product.name} subtitle={`${transfer.origin.name} → ${transfer.destination.name}`} value={transfer.quantity} date={dateTime(transfer.createdAt)}/>) }
         </ActivityPanel>
         <ActivityPanel title="Últimas vendas" icon={ShoppingCart} empty="Nenhuma venda registrada">
-          {(data.recentSales || []).map((sale: any) => <ActivityRow key={sale.id} title={`Venda #${sale.number}`} subtitle={`${sale.location.name} · ${sale._count.items} item(ns)`} value={money(sale.totalAmount)} date={dateTime(sale.createdAt)} danger={sale.status === 'REVERSED'}/>) }
+          {(data.recentSales || []).map((sale: any) => <ActivityRow key={sale.id} title={`Venda #${sale.number}`} subtitle={`${sale.location.name} · ${sale._count.items} item(ns)`} value={money(sale.totalAmount)} date={dateTime(sale.createdAt)} danger={sale.status === 'ESTORNADA'}/>) }
         </ActivityPanel>
         <ActivityPanel title="Estoque baixo" icon={AlertTriangle} empty="Nenhum produto em alerta">
           {data.lowStockItems.slice(0, 5).map((item: any) => <ActivityRow key={item.id} title={item.product.name} subtitle={item.location.name} value={`${item.quantity} ${item.product.unit}`} date={`Mín. ${item.effectiveMinStock ?? item.product.minStock}`} danger/>) }

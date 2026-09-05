@@ -181,7 +181,7 @@ export default function Stock() {
                 {activeLocations.map((l: any) => (
                   <th key={l.id} className="text-center px-4 py-3 text-surface-600 font-medium text-xs uppercase min-w-[120px]">
                     <div className="flex items-center justify-center gap-1">
-                      {l.type === 'COLD_ROOM' ? <Warehouse size={14} /> : null}
+                      {l.type === 'CAMARA_FRIA' ? <Warehouse size={14} /> : null}
                       {l.name}
                     </div>
                   </th>

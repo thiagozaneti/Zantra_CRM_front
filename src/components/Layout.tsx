@@ -57,13 +57,13 @@ export function hasActionPermission(action: string): boolean {
 }
 
 const roleLabels: Record<string, string> = {
-  ADMIN: 'Administrador',
-  MANAGER: 'Gestor',
-  COLD_ROOM_RESPONSIBLE: 'Resp. Câmara Fria',
-  BAR_RESPONSIBLE: 'Resp. Bar',
-  PRODUCT_REGISTER: 'Cadastro de Produtos',
-  READ_ONLY: 'Consulta',
-  SALES_FRONT: 'Frente de Vendas',
+  ADMINISTRADOR: 'Administrador',
+  GERENTE: 'Gestor',
+  RESPONSAVEL_CAMARA_FRIA: 'Resp. Câmara Fria',
+  RESPONSAVEL_BAR: 'Resp. Bar',
+  CADASTRO_PRODUTO: 'Cadastro de Produtos',
+  SOMENTE_LEITURA: 'Consulta',
+  FRENTE_VENDAS: 'Frente de Vendas',
 };
 
 export default function Layout() {

@@ -126,7 +126,7 @@ export default function Transfers() {
     } catch (err: any) { showToast('error', err.message); }
   };
 
-  const statusLabel: Record<string, string> = { PENDING_APPROVAL: 'Aguardando aprovação', PENDING_CONFIRMATION: 'Aguardando recebimento', COMPLETED: 'Concluída', REJECTED: 'Rejeitada', REVERSED: 'Estornada' };
+  const statusLabel: Record<string, string> = { PENDENTE_APROVACAO: 'Aguardando aprovação', PENDENTE_CONFIRMACAO: 'Aguardando recebimento', CONCLUIDA: 'Concluída', REJEITADA: 'Rejeitada', ESTORNADA: 'Estornada' };
 
   return (
     <div className="space-y-6">
@@ -230,9 +230,9 @@ export default function Transfers() {
                   <td className="px-4 py-3 text-surface-600">{t.withdrawnBy.name}</td>
                   <td className="px-4 py-3 text-surface-600">{t.receivedBy.name}</td>
                   <td className="px-4 py-3"><div className="text-xs mb-1">{statusLabel[t.status] || t.status}</div><div className="flex gap-2">
-                    {t.status === 'PENDING_APPROVAL' && canApprove && <><button className="text-emerald-600" onClick={() => runAction('approve', t)}>Aprovar</button><button className="text-red-600" onClick={() => runAction('reject', t)}>Rejeitar</button></>}
-                    {t.status === 'PENDING_CONFIRMATION' && canConfirm && <button className="text-brand-600" onClick={() => runAction('confirm', t)}>Confirmar</button>}
-                    {t.status === 'COMPLETED' && canReverse && <button className="text-red-600" onClick={() => runAction('reverse', t)}>Estornar</button>}
+                    {t.status === 'PENDENTE_APROVACAO' && canApprove && <><button className="text-emerald-600" onClick={() => runAction('approve', t)}>Aprovar</button><button className="text-red-600" onClick={() => runAction('reject', t)}>Rejeitar</button></>}
+                    {t.status === 'PENDENTE_CONFIRMACAO' && canConfirm && <button className="text-brand-600" onClick={() => runAction('confirm', t)}>Confirmar</button>}
+                    {t.status === 'CONCLUIDA' && canReverse && <button className="text-red-600" onClick={() => runAction('reverse', t)}>Estornar</button>}
                   </div></td>
                 </tr>
               ))}

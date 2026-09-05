@@ -39,18 +39,18 @@ export default function Audit() {
 
   const getOpStyle = (op: string) => {
     switch (op) {
-      case 'ENTRY': return 'bg-emerald-100 text-emerald-700';
+      case 'ENTRADA': return 'bg-emerald-100 text-emerald-700';
       case 'TRANSFER': return 'bg-blue-100 text-blue-700';
-      case 'ADJUSTMENT': return 'bg-amber-100 text-amber-700';
+      case 'AJUSTE': return 'bg-amber-100 text-amber-700';
       default: return 'bg-surface-100 text-surface-600';
     }
   };
 
   const getOpLabel = (op: string) => {
     switch (op) {
-      case 'ENTRY': return 'Entrada';
+      case 'ENTRADA': return 'Entrada';
       case 'TRANSFER': return 'Transferência';
-      case 'ADJUSTMENT': return 'Ajuste';
+      case 'AJUSTE': return 'Ajuste';
       default: return op;
     }
   };
@@ -85,9 +85,9 @@ export default function Audit() {
                 <label className="block text-xs font-medium text-surface-500 mb-1.5">Tipo de Operação</label>
                 <select value={fOperationType} onChange={(e) => { setFOperationType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
                   <option value="">Todas</option>
-                  <option value="ENTRY">Entrada</option>
+                  <option value="ENTRADA">Entrada</option>
                   <option value="TRANSFER">Transferência</option>
-                  <option value="ADJUSTMENT">Ajuste</option>
+                  <option value="AJUSTE">Ajuste</option>
                 </select>
               </div>
               <div>

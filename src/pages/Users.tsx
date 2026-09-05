@@ -6,23 +6,23 @@ import { Plus, Search, Edit2, Trash2, X } from 'lucide-react';
 import { hasActionPermission } from '../components/Layout';
 
 const roles = [
-  { value: 'ADMIN', label: 'Administrador' },
-  { value: 'MANAGER', label: 'Gestor' },
-  { value: 'COLD_ROOM_RESPONSIBLE', label: 'Resp. Câmara Fria' },
-  { value: 'BAR_RESPONSIBLE', label: 'Resp. Bar' },
-  { value: 'PRODUCT_REGISTER', label: 'Cadastro de Produtos' },
-  { value: 'READ_ONLY', label: 'Consulta' },
-  { value: 'SALES_FRONT', label: 'Frente de Vendas' },
+  { value: 'ADMINISTRADOR', label: 'Administrador' },
+  { value: 'GERENTE', label: 'Gestor' },
+  { value: 'RESPONSAVEL_CAMARA_FRIA', label: 'Resp. Câmara Fria' },
+  { value: 'RESPONSAVEL_BAR', label: 'Resp. Bar' },
+  { value: 'CADASTRO_PRODUTO', label: 'Cadastro de Produtos' },
+  { value: 'SOMENTE_LEITURA', label: 'Consulta' },
+  { value: 'FRENTE_VENDAS', label: 'Frente de Vendas' },
 ];
 
 const roleColors: Record<string, string> = {
-  ADMIN: 'bg-brand-100 text-brand-700',
-  MANAGER: 'bg-emerald-100 text-emerald-700',
-  COLD_ROOM_RESPONSIBLE: 'bg-blue-100 text-blue-700',
-  BAR_RESPONSIBLE: 'bg-purple-100 text-purple-700',
-  PRODUCT_REGISTER: 'bg-amber-100 text-amber-700',
-  READ_ONLY: 'bg-surface-100 text-surface-600',
-  SALES_FRONT: 'bg-pink-100 text-pink-700',
+  ADMINISTRADOR: 'bg-brand-100 text-brand-700',
+  GERENTE: 'bg-emerald-100 text-emerald-700',
+  RESPONSAVEL_CAMARA_FRIA: 'bg-blue-100 text-blue-700',
+  RESPONSAVEL_BAR: 'bg-purple-100 text-purple-700',
+  CADASTRO_PRODUTO: 'bg-amber-100 text-amber-700',
+  SOMENTE_LEITURA: 'bg-surface-100 text-surface-600',
+  FRENTE_VENDAS: 'bg-pink-100 text-pink-700',
 };
 
 interface User { id: string; name: string; email: string; role: string; active: boolean; createdAt: string; assignedLocationId?: string | null; assignedLocation?: { name: string } | null; locations?: Array<{ id: string; name: string; type: string; allowsSale: boolean }>; permissionsConfigured?: boolean; }
@@ -39,7 +39,7 @@ export default function Users() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'READ_ONLY', locationIds: [] as string[], permissions: [] as string[] });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'SOMENTE_LEITURA', locationIds: [] as string[], permissions: [] as string[] });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -59,7 +59,7 @@ export default function Users() {
     finally { setLoading(false); }
   };
 
-  const openNew = () => { setEditing(null); setForm({ name: '', email: '', password: '', role: 'READ_ONLY', locationIds: [], permissions: templates.READ_ONLY || [] }); setShowModal(true); setError(''); };
+  const openNew = () => { setEditing(null); setForm({ name: '', email: '', password: '', role: 'SOMENTE_LEITURA', locationIds: [], permissions: templates.SOMENTE_LEITURA || [] }); setShowModal(true); setError(''); };
   const openEdit = async (u: User) => {
     setEditing(u); setShowModal(true); setError('');
     setForm({ name: u.name, email: u.email, password: '', role: u.role, locationIds: u.locations?.map((location) => location.id) || (u.assignedLocationId ? [u.assignedLocationId] : []), permissions: templates[u.role] || [] });
@@ -84,14 +84,14 @@ export default function Users() {
     });
   };
 
-  const applyTemplate = (role: string) => setForm((current) => ({ ...current, role, locationIds: role === 'SALES_FRONT' ? current.locationIds.filter((id) => locations.find((location) => location.id === id)?.allowsSale) : current.locationIds, permissions: templates[role] || [] }));
+  const applyTemplate = (role: string) => setForm((current) => ({ ...current, role, locationIds: role === 'FRENTE_VENDAS' ? current.locationIds.filter((id) => locations.find((location) => location.id === id)?.allowsSale) : current.locationIds, permissions: templates[role] || [] }));
 
   const handleSave = async () => {
     if (!form.name || !form.email) { setError('Nome e email são obrigatórios'); return; }
     if (!editing && !form.password) { setError('Senha é obrigatória para novos usuários'); return; }
-    if (form.role === 'SALES_FRONT' && !form.locationIds.length) { setError('Selecione ao menos um local do operador de vendas'); return; }
+    if (form.role === 'FRENTE_VENDAS' && !form.locationIds.length) { setError('Selecione ao menos um local do operador de vendas'); return; }
     setSaving(true); setError('');
-    const permissionsToSave = form.permissions.filter((permission) => !['inventory:create', 'inventory:approve'].includes(permission) || ['ADMIN', 'MANAGER'].includes(form.role));
+    const permissionsToSave = form.permissions.filter((permission) => !['inventory:create', 'inventory:approve'].includes(permission) || ['ADMINISTRADOR', 'GERENTE'].includes(form.role));
     try {
       if (editing) {
         const data: any = { name: form.name, email: form.email, role: form.role, locationIds: form.locationIds };
@@ -212,9 +212,9 @@ export default function Users() {
                   {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
               </div>
-              <div><label className="block text-sm font-medium text-surface-700 mb-1.5">Locais de atuação {form.role === 'SALES_FRONT' ? '*' : '(opcional)'}</label><div className="grid sm:grid-cols-2 gap-2 border border-surface-200 rounded-xl p-3 max-h-44 overflow-y-auto">{locations.filter((location) => location.type !== 'UNASSIGNED' && (form.role !== 'SALES_FRONT' || location.allowsSale)).map((location) => <label key={location.id} className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer"><input type="checkbox" checked={form.locationIds.includes(location.id)} onChange={(e) => setForm((current) => ({ ...current, locationIds: e.target.checked ? [...current.locationIds, location.id] : current.locationIds.filter((id) => id !== location.id) }))} className="rounded"/><span>{location.name}</span><span className="text-xs text-surface-400">{location.type === 'COLD_ROOM' ? 'Câmara fria' : 'Bar/local'}</span></label>)}</div><p className="text-xs text-surface-500 mt-1.5">O usuário poderá operar e visualizar dados dos locais selecionados conforme suas permissões.</p></div>
+              <div><label className="block text-sm font-medium text-surface-700 mb-1.5">Locais de atuação {form.role === 'FRENTE_VENDAS' ? '*' : '(opcional)'}</label><div className="grid sm:grid-cols-2 gap-2 border border-surface-200 rounded-xl p-3 max-h-44 overflow-y-auto">{locations.filter((location) => location.type !== 'NAO_ATRIBUIDO' && (form.role !== 'FRENTE_VENDAS' || location.allowsSale)).map((location) => <label key={location.id} className="flex items-center gap-2 text-sm text-surface-700 cursor-pointer"><input type="checkbox" checked={form.locationIds.includes(location.id)} onChange={(e) => setForm((current) => ({ ...current, locationIds: e.target.checked ? [...current.locationIds, location.id] : current.locationIds.filter((id) => id !== location.id) }))} className="rounded"/><span>{location.name}</span><span className="text-xs text-surface-400">{location.type === 'CAMARA_FRIA' ? 'Câmara fria' : 'Bar/local'}</span></label>)}</div><p className="text-xs text-surface-500 mt-1.5">O usuário poderá operar e visualizar dados dos locais selecionados conforme suas permissões.</p></div>
               {canManagePermissions && <div className="pt-3 border-t border-surface-200"><div className="flex items-center justify-between gap-3 mb-3"><div><h3 className="font-semibold text-surface-900">Permissões por módulo</h3><p className="text-xs text-surface-500 mt-0.5">O perfil preenche uma sugestão; ajuste as ações conforme necessário.</p></div><button type="button" className="text-xs text-brand-600 font-medium" onClick={() => setForm({ ...form, permissions: templates[form.role] || [] })}>Restaurar modelo</button></div>
-                <div className="grid sm:grid-cols-2 gap-3">{permissionModules.map((module) => <div key={module.module} className={`border rounded-xl p-3 ${module.module === 'inventory' ? 'border-blue-200 bg-blue-50/40' : 'border-surface-200'}`}><div className="flex items-center justify-between mb-2"><div><p className="text-sm font-semibold text-surface-800">{module.label}</p>{module.module === 'inventory' && <p className="text-[10px] text-surface-500 mt-0.5">Admin/Gestor abre e aprova; responsável do local realiza a contagem.</p>}</div><span className="text-[10px] text-surface-400">{module.permissions.filter((permission: any) => form.permissions.includes(permission.key)).length}/{module.permissions.length}</span></div><div className="space-y-2">{module.permissions.map((permission: any) => { const restricted = ['inventory:create', 'inventory:approve'].includes(permission.key) && !['ADMIN', 'MANAGER'].includes(form.role); return <label key={permission.key} className={`flex items-center gap-2 text-xs ${restricted ? 'text-surface-400 cursor-not-allowed' : 'text-surface-600 cursor-pointer'}`}><input type="checkbox" checked={!restricted && form.permissions.includes(permission.key)} disabled={restricted} onChange={(e) => togglePermission(permission.key, e.target.checked)} className="rounded"/>{permission.label}</label>; })}</div></div>)}</div>
+                <div className="grid sm:grid-cols-2 gap-3">{permissionModules.map((module) => <div key={module.module} className={`border rounded-xl p-3 ${module.module === 'inventory' ? 'border-blue-200 bg-blue-50/40' : 'border-surface-200'}`}><div className="flex items-center justify-between mb-2"><div><p className="text-sm font-semibold text-surface-800">{module.label}</p>{module.module === 'inventory' && <p className="text-[10px] text-surface-500 mt-0.5">Admin/Gestor abre e aprova; responsável do local realiza a contagem.</p>}</div><span className="text-[10px] text-surface-400">{module.permissions.filter((permission: any) => form.permissions.includes(permission.key)).length}/{module.permissions.length}</span></div><div className="space-y-2">{module.permissions.map((permission: any) => { const restricted = ['inventory:create', 'inventory:approve'].includes(permission.key) && !['ADMINISTRADOR', 'GERENTE'].includes(form.role); return <label key={permission.key} className={`flex items-center gap-2 text-xs ${restricted ? 'text-surface-400 cursor-not-allowed' : 'text-surface-600 cursor-pointer'}`}><input type="checkbox" checked={!restricted && form.permissions.includes(permission.key)} disabled={restricted} onChange={(e) => togglePermission(permission.key, e.target.checked)} className="rounded"/>{permission.label}</label>; })}</div></div>)}</div>
               </div>}
             </div>
             <div className="flex gap-3 px-4 lg:px-6 py-4 border-t border-surface-200 bg-surface-50 shrink-0">

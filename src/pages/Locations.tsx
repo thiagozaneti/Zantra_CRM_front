@@ -7,7 +7,7 @@ import { hasActionPermission } from '../components/Layout';
 
 interface Location { id: string; name: string; type: string; description: string; active: boolean; acceptsEntry: boolean; allowsSale: boolean; allowsConsumption: boolean; allowsTransferOrigin: boolean; allowsTransferDestination: boolean; }
 
-const locationTypes: Record<string, string> = { COLD_ROOM: 'Câmara Fria', BAR: 'Bar', KITCHEN: 'Cozinha', WAREHOUSE: 'Almoxarifado', PRODUCTION: 'Produção', OTHER: 'Outro' };
+const locationTypes: Record<string, string> = { CAMARA_FRIA: 'Câmara Fria', BAR: 'Bar', COZINHA: 'Cozinha', ARMAZEM: 'Almoxarifado', PRODUCAO: 'Produção', OUTRO: 'Outro' };
 
 export default function Locations() {
   const canManage = hasActionPermission('locations:manage');
@@ -19,7 +19,7 @@ export default function Locations() {
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
-  const [form, setForm] = useState({ name: '', type: 'COLD_ROOM', description: '', acceptsEntry: true, allowsSale: false, allowsConsumption: true, allowsTransferOrigin: true, allowsTransferDestination: true });
+  const [form, setForm] = useState({ name: '', type: 'CAMARA_FRIA', description: '', acceptsEntry: true, allowsSale: false, allowsConsumption: true, allowsTransferOrigin: true, allowsTransferDestination: true });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -37,7 +37,7 @@ export default function Locations() {
     finally { setLoading(false); }
   };
 
-  const openNew = () => { setEditing(null); setForm({ name: '', type: 'COLD_ROOM', description: '', acceptsEntry: true, allowsSale: false, allowsConsumption: true, allowsTransferOrigin: true, allowsTransferDestination: true }); setShowModal(true); setError(''); };
+  const openNew = () => { setEditing(null); setForm({ name: '', type: 'CAMARA_FRIA', description: '', acceptsEntry: true, allowsSale: false, allowsConsumption: true, allowsTransferOrigin: true, allowsTransferDestination: true }); setShowModal(true); setError(''); };
   const openEdit = (l: Location) => { setEditing(l); setForm({ name: l.name, type: l.type, description: l.description || '', acceptsEntry: l.acceptsEntry, allowsSale: l.allowsSale, allowsConsumption: l.allowsConsumption, allowsTransferOrigin: l.allowsTransferOrigin, allowsTransferDestination: l.allowsTransferDestination }); setShowModal(true); setError(''); };
 
   const handleSave = async () => {
@@ -91,9 +91,9 @@ export default function Locations() {
         </div>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="w-full sm:w-48">
           <option value="">Todos os tipos</option>
-          <option value="COLD_ROOM">Câmara Fria</option>
+          <option value="CAMARA_FRIA">Câmara Fria</option>
           <option value="BAR">Bar</option>
-          <option value="KITCHEN">Cozinha</option><option value="WAREHOUSE">Almoxarifado</option><option value="PRODUCTION">Produção</option><option value="OTHER">Outro</option>
+          <option value="COZINHA">Cozinha</option><option value="ARMAZEM">Almoxarifado</option><option value="PRODUCAO">Produção</option><option value="OUTRO">Outro</option>
         </select>
       </div>
 
@@ -106,12 +106,12 @@ export default function Locations() {
           <div key={l.id} className="card p-4 lg:p-5 hover:shadow-md transition-all duration-300 slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${l.type === 'COLD_ROOM' ? 'bg-blue-100' : 'bg-purple-100'}`}>
-                  {l.type === 'COLD_ROOM' ? <Warehouse size={20} className="text-blue-600" /> : <Store size={20} className="text-purple-600" />}
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${l.type === 'CAMARA_FRIA' ? 'bg-blue-100' : 'bg-purple-100'}`}>
+                  {l.type === 'CAMARA_FRIA' ? <Warehouse size={20} className="text-blue-600" /> : <Store size={20} className="text-purple-600" />}
                 </div>
                 <div>
                   <h3 className="font-semibold text-surface-900">{l.name}</h3>
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${l.type === 'COLD_ROOM' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${l.type === 'CAMARA_FRIA' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                     {locationTypes[l.type] || l.type}
                   </span>
                 </div>
@@ -152,9 +152,9 @@ export default function Locations() {
               <div>
                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Tipo *</label>
                 <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full">
-                  <option value="COLD_ROOM">Câmara Fria</option>
+                  <option value="CAMARA_FRIA">Câmara Fria</option>
                   <option value="BAR">Bar</option>
-                  <option value="KITCHEN">Cozinha</option><option value="WAREHOUSE">Almoxarifado</option><option value="PRODUCTION">Produção</option><option value="OTHER">Outro</option>
+                  <option value="COZINHA">Cozinha</option><option value="ARMAZEM">Almoxarifado</option><option value="PRODUCAO">Produção</option><option value="OUTRO">Outro</option>
                 </select>
               </div>
               <div className="rounded-xl border border-surface-200 p-4 space-y-3">
