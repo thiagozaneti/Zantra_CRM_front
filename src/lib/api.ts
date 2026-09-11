@@ -12,7 +12,7 @@ async function request(url: string, options: RequestInit = {}) {
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${url}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${url}`, { ...options, headers, credentials: 'include' });
 
   if (res.status === 401) {
     // Try refresh
@@ -21,17 +21,20 @@ async function request(url: string, options: RequestInit = {}) {
       const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ refreshToken }),
       });
       if (refreshRes.ok) {
         const data = await refreshRes.json();
         localStorage.setItem('zantra_token', data.accessToken);
         headers['Authorization'] = `Bearer ${data.accessToken}`;
-        const retryRes = await fetch(`${API_BASE}${url}`, { ...options, headers });
+        const retryRes = await fetch(`${API_BASE}${url}`, { ...options, headers, credentials: 'include' });
         if (!retryRes.ok) {
           const retryError = await retryRes.json().catch(() => ({ error: 'Erro na requisição' }));
-          throw new ApiError(retryError.error || 'Erro na requisição', retryRes.status, retryError.code);
+          const nested = retryError.error && typeof retryError.error === 'object' ? retryError.error : null;
+          throw new ApiError(nested?.message || retryError.error || 'Erro na requisição', retryRes.status, nested?.code || retryError.code);
         }
+        if (retryRes.status === 204) return null;
         return retryRes.json();
       }
     }
@@ -43,8 +46,11 @@ async function request(url: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
-    throw new ApiError(err.error || 'Erro na requisição', res.status, err.code);
+    const nested = err.error && typeof err.error === 'object' ? err.error : null;
+    throw new ApiError(nested?.message || err.error || 'Erro na requisição', res.status, nested?.code || err.code);
   }
+
+  if (res.status === 204) return null;
 
   // Check if response is CSV
   const contentType = res.headers.get('content-type');
@@ -145,12 +151,22 @@ export const api = {
   updateCommandStatus: (id: string, status: string) => request(`/commands/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   updateCommandValue: (id: string, operation: 'SET' | 'ADD', amount: number, reason: string, paymentMethod?: string) => request(`/commands/${id}/value`, { method: 'PATCH', body: JSON.stringify({ operation, amount, reason, paymentMethod }) }),
   resetCommand: (id: string, reason?: string) => request(`/commands/${id}/reset`, { method: 'POST', body: JSON.stringify({ reason }) }),
-  getPrinterHealth: () => request('/printer/health'),
-  getPrinters: () => request('/printer/printers'),
-  getSelectedPrinter: () => request('/printer/selected'),
-  selectPrinter: (printerName: string) => request('/printer/select', { method: 'POST', body: JSON.stringify({ printerName }) }),
-  testPrinter: () => request('/printer/test', { method: 'POST' }),
-  printSale: (saleId: string, reprint = false) => request(`/printer/sales/${saleId}/print`, { method: 'POST', body: JSON.stringify({ reprint }) }),
+  getPrinterTerminals: (params?: string) => request(`/printer/terminals${params ? `?${params}` : ''}`),
+  createPrinterPairing: (data: any) => request('/printer/terminals/pairing-code', { method: 'POST', body: JSON.stringify(data) }),
+  updatePrinterTerminal: (id: string, data: any) => request(`/printer/terminals/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  revokePrinterTerminal: (id: string) => request(`/printer/terminals/${id}/revoke`, { method: 'POST' }),
+  rotatePrinterCredential: (id: string) => request(`/printer/terminals/${id}/rotate`, { method: 'POST' }),
+  getTerminalPrinters: (id: string) => request(`/printer/terminals/${id}/printers`),
+  selectTerminalPrinter: (id: string, printerName: string) => request(`/printer/terminals/${id}/selected-printer`, { method: 'PUT', body: JSON.stringify({ printerName }) }),
+  testTerminalPrinter: (id: string) => request(`/printer/terminals/${id}/test`, { method: 'POST' }),
+  getWorkstationStatus: () => request('/printer/workstation/status'),
+  bindWorkstation: (bindingCode: string, stationLabel?: string) => request('/printer/workstation/bind', { method: 'POST', body: JSON.stringify({ bindingCode, stationLabel }) }),
+  renewWorkstation: () => request('/printer/workstation/renew', { method: 'POST' }),
+  unbindWorkstation: () => request('/printer/workstation/binding', { method: 'DELETE' }),
+  getPrintJobs: (params?: string) => request(`/printer/jobs${params ? `?${params}` : ''}`),
+  retryPrintJob: (jobId: string) => request(`/printer/jobs/${jobId}/retry`, { method: 'POST' }),
+  cancelPrintJob: (jobId: string) => request(`/printer/jobs/${jobId}/cancel`, { method: 'POST' }),
+  printSale: (saleId: string, requestId = crypto.randomUUID()) => request(`/printer/sales/${saleId}/print`, { method: 'POST', headers: { 'Idempotency-Key': requestId }, body: JSON.stringify({ reprint: true, copies: 1 }) }),
   getPrintJob: (jobId: string) => request(`/printer/jobs/${encodeURIComponent(jobId)}`),
 
   // Reports

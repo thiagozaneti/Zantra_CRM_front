@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -69,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
+      credentials: 'include',
     });
 
     if (!res.ok) {
@@ -86,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     const refreshToken = localStorage.getItem('zantra_refresh');
-    if (refreshToken) fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }) }).catch(() => undefined);
+    if (refreshToken) fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ refreshToken }) }).catch(() => undefined);
     localStorage.removeItem('zantra_token');
     localStorage.removeItem('zantra_refresh');
     localStorage.removeItem('zantra_user');

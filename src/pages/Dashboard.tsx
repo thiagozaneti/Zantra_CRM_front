@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   AlertTriangle, ArrowDownToLine, ArrowLeftRight, Ban, Box, CircleDollarSign,
   Download, Package, RefreshCw, ShoppingCart, Utensils, Warehouse, WalletCards,
+  Printer,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -50,6 +51,7 @@ export default function Dashboard() {
     { label: 'Consumo hoje', value: data.management?.consumptionToday?._count || 0, detail: `${data.management?.consumptionToday?._sum?.quantity || 0} em quantidade`, icon: Utensils, color: 'text-orange-600', bar: 'bg-orange-500' },
     { label: 'Perdas/avarias', value: data.management?.lossesToday?._count || 0, detail: `${data.management?.lossesToday?._sum?.quantity || 0} em quantidade`, icon: Ban, color: 'text-red-700', bar: 'bg-red-700' },
     { label: 'Valor em estoque', value: money(data.management?.inventoryValue || 0), detail: 'pelo custo médio', icon: CircleDollarSign, color: 'text-cyan-700', bar: 'bg-cyan-600' },
+    { label: 'Impressão', value: data.printing?.pendingJobs || 0, detail: `${data.printing?.online || 0}/${data.printing?.terminals || 0} Agents online`, icon: Printer, color: (data.printing?.failedJobs || 0) > 0 ? 'text-red-600' : 'text-brand-600', bar: (data.printing?.failedJobs || 0) > 0 ? 'bg-red-500' : 'bg-brand-500' },
   ];
 
   const coldRooms = Object.entries(data.coldRoomStock || {}).map(([name, value]) => ({ label: name.replace('Câmara ', '').substring(0, 12), value: value as number, color: 'bg-blue-500' }));
@@ -68,7 +70,7 @@ export default function Dashboard() {
       </div>
     </header>
 
-    <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-9">
+    <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-10">
       {metrics.map((metric) => <div key={metric.label} className="relative min-w-0 overflow-hidden rounded-lg border border-surface-200 bg-white px-4 py-3.5">
         <span className={`absolute inset-x-0 top-0 h-0.5 ${metric.bar}`}/>
         <div className="flex items-center justify-between gap-2"><p className="truncate text-xs font-medium text-surface-500">{metric.label}</p><metric.icon size={15} className={`shrink-0 ${metric.color}`}/></div>
