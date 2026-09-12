@@ -1,3 +1,5 @@
+import { createUuid } from './uuid';
+
 const API_BASE = '/api';
 
 export class ApiError extends Error {
@@ -155,6 +157,7 @@ export const api = {
   createPrinterPairing: (data: any) => request('/printer/terminals/pairing-code', { method: 'POST', body: JSON.stringify(data) }),
   updatePrinterTerminal: (id: string, data: any) => request(`/printer/terminals/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   revokePrinterTerminal: (id: string) => request(`/printer/terminals/${id}/revoke`, { method: 'POST' }),
+  deletePrinterTerminal: (id: string) => request(`/printer/terminals/${id}`, { method: 'DELETE' }),
   rotatePrinterCredential: (id: string) => request(`/printer/terminals/${id}/rotate`, { method: 'POST' }),
   getTerminalPrinters: (id: string) => request(`/printer/terminals/${id}/printers`),
   selectTerminalPrinter: (id: string, printerName: string) => request(`/printer/terminals/${id}/selected-printer`, { method: 'PUT', body: JSON.stringify({ printerName }) }),
@@ -166,7 +169,7 @@ export const api = {
   getPrintJobs: (params?: string) => request(`/printer/jobs${params ? `?${params}` : ''}`),
   retryPrintJob: (jobId: string) => request(`/printer/jobs/${jobId}/retry`, { method: 'POST' }),
   cancelPrintJob: (jobId: string) => request(`/printer/jobs/${jobId}/cancel`, { method: 'POST' }),
-  printSale: (saleId: string, requestId = crypto.randomUUID()) => request(`/printer/sales/${saleId}/print`, { method: 'POST', headers: { 'Idempotency-Key': requestId }, body: JSON.stringify({ reprint: true, copies: 1 }) }),
+  printSale: (saleId: string, requestId = createUuid()) => request(`/printer/sales/${saleId}/print`, { method: 'POST', headers: { 'Idempotency-Key': requestId }, body: JSON.stringify({ reprint: true, copies: 1 }) }),
   getPrintJob: (jobId: string) => request(`/printer/jobs/${encodeURIComponent(jobId)}`),
 
   // Reports

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Link2, Minus, Plus, Printer, RotateCcw, Search, ShoppingCart, Trash2, Wifi, WifiOff } from 'lucide-react';
+import { CheckCircle2, History, Link2, Minus, Plus, Printer, RotateCcw, Search, ShoppingCart, Trash2, Wifi, WifiOff, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,7 @@ import { hasActionPermission } from '../components/Layout';
 import { quantityStep } from '../lib/quantity';
 import { useConfirm } from '../components/ConfirmDialog';
 import RFIDCommandPanel, { IdentifiedCommand } from '../components/RFIDCommandPanel';
+import { createUuid } from '../lib/uuid';
 
 type Product = { id: string; name: string; unit: string; sku?: string; barcode?: string; salePrice: number | null; availableQuantity: number };
 type CartItem = Product & { quantity: number; unitPrice: number };
@@ -44,7 +45,7 @@ export default function Sales() {
   const [workstation, setWorkstation] = useState<any>({ bound: false, terminal: null });
   const [bindingCode, setBindingCode] = useState('');
   const [binding, setBinding] = useState(false);
-  const [printReceipt, setPrintReceipt] = useState(true);
+  const [salesOpen, setSalesOpen] = useState(false);
 
   const selectCommand = (command: IdentifiedCommand | null) => {
     setSelectedCommand(command);
@@ -119,6 +120,7 @@ export default function Sales() {
   const total = Math.max(0, subtotal - discount);
   const totalUnitsAvailable = products.reduce((sum, product) => sum + product.availableQuantity, 0);
   const quantityInCart = (productId: string) => cart.find((item) => item.id === productId)?.quantity || 0;
+  const printerReady = Boolean(workstation.bound && workstation.terminal?.online && workstation.terminal?.printerAvailable && workstation.terminal?.activePrinterName && (!locationId || workstation.terminal.locationId === locationId));
 
   const addProduct = (product: Product) => {
     if (product.salePrice === null) return setError(`Cadastre o preço de venda de ${product.name}`);
@@ -143,7 +145,7 @@ export default function Sales() {
     try {
       const sale = await api.createSale({
         locationId, paymentMethod, discount, customerName: customerName || null, notes: notes || null,
-        comandaId: selectedCommand?.comandaId || null, requestId: crypto.randomUUID(), printReceipt,
+        comandaId: selectedCommand?.comandaId || null, requestId: createUuid(), printReceipt: true,
         items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, ...(canOverridePrice ? { unitPrice: item.unitPrice } : {}) })),
       });
       showToast('success', `Venda #${sale.number} concluída — ${money(sale.totalAmount)}`);
@@ -173,29 +175,28 @@ export default function Sales() {
     catch (err: any) { showToast('error', err.message); }
   };
 
-  return <div className="space-y-6">
-    <div><h1 className="text-2xl font-bold text-surface-900">Frente de Vendas</h1><p className="text-surface-500 mt-1">Baixa de produtos vendidos no estoque do bar</p></div>
-    {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
-    {operationStatus && <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-700">{operationStatus}</div>}
+  return <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto xl:overflow-hidden">
+    <div className="flex shrink-0 items-center justify-between gap-3"><div><h1 className="text-xl font-bold text-surface-900">Frente de Vendas</h1><p className="text-xs text-surface-500">Venda, baixa no estoque e emissão automática de comprovante</p></div><button className="btn-secondary flex shrink-0 items-center gap-2" onClick={() => setSalesOpen(true)}><History size={16}/>Vendas <span className="rounded-full bg-surface-100 px-1.5 text-xs">{summary.completedSales}</span></button></div>
+    {error && <div className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+    {operationStatus && <div className="shrink-0 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-700">{operationStatus}</div>}
 
-    <section className={`rounded-xl border p-4 ${workstation.bound ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3">{workstation.bound ? workstation.terminal?.online ? <Wifi size={19} className="mt-0.5 text-emerald-600"/> : <WifiOff size={19} className="mt-0.5 text-amber-600"/> : <Link2 size={19} className="mt-0.5 text-amber-600"/>}<div><p className="font-semibold text-surface-900">Impressora deste computador</p>{workstation.bound ? <p className="text-xs text-surface-600">{workstation.terminal.name} · {workstation.terminal.locationName} · {workstation.terminal.online ? 'Agent online' : 'Agent offline'} · {workstation.terminal.activePrinterName || 'sem impressora configurada'}</p> : <p className="text-xs text-surface-600">Informe uma única vez o código exibido pelo Zantra Agent desta máquina.</p>}</div></div>
+    <section className={`shrink-0 rounded-xl border px-3 py-2.5 ${printerReady ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2.5">{printerReady ? <Wifi size={18} className="text-emerald-600"/> : workstation.bound ? <WifiOff size={18} className="text-amber-600"/> : <Link2 size={18} className="text-amber-600"/>}<div><p className="text-sm font-semibold text-surface-900">{printerReady ? 'Impressora conectada' : workstation.bound ? 'Impressora indisponível' : 'Impressora não vinculada'}</p><p className="text-[11px] text-surface-600">{workstation.bound ? `${workstation.terminal.name} · ${workstation.terminal.activePrinterName || 'sem impressora configurada'} · ${workstation.terminal.online ? 'Agent online' : 'Agent offline'}` : 'Informe o código exibido pelo Agent. O comprovante é solicitado em toda venda.'}</p></div></div>
         {!workstation.bound && <div className="flex w-full gap-2 sm:w-auto"><input className="min-w-0 flex-1 sm:w-48" value={bindingCode} onChange={(event) => setBindingCode(event.target.value.toUpperCase())} placeholder="000-000" maxLength={30}/><button className="btn-primary" disabled={binding || bindingCode.trim().length < 6} onClick={() => void bindWorkstation()}>Vincular</button></div>}
       </div>
-      <label className="mt-3 flex items-center gap-2 text-sm text-surface-700"><input type="checkbox" checked={printReceipt} onChange={(event) => setPrintReceipt(event.target.checked)}/>Emitir comprovante desta venda</label>
-      {workstation.bound && locationId && workstation.terminal.locationId !== locationId && <p className="mt-2 text-xs font-medium text-red-700">O terminal está vinculado a outro local. A venda será concluída sem impressão.</p>}
+      {workstation.bound && locationId && workstation.terminal.locationId !== locationId && <p className="mt-1 text-xs font-medium text-red-700">O terminal pertence a outro local; a venda será concluída e o sistema registrará o aviso de impressão.</p>}
     </section>
 
     {canCreate && <RFIDCommandPanel enabled={canCreate} busy={saving} selected={selectedCommand} onSelect={selectCommand}/>}
 
-    {canCreate && <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
-      <section className="card p-4 lg:p-6 space-y-4">
-        <div className="grid sm:grid-cols-2 gap-4">
+    {canCreate && <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <section className="card flex min-h-0 flex-col gap-3 p-4">
+        <div className="grid shrink-0 gap-3 sm:grid-cols-2">
           <div><label className="block text-sm font-medium mb-1.5">Local de venda *</label><select className="w-full" value={locationId} disabled={user?.role === 'FRENTE_VENDAS' && bars.length === 1} onChange={(e) => setLocationId(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
           <div><label className="block text-sm font-medium mb-1.5">Buscar produto / código</label><div className="relative"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"/><input className="w-full pl-10" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nome, SKU ou código de barras" disabled={!locationId}/></div></div>
         </div>
-        {locationId && <div className="flex flex-wrap gap-3 text-sm"><span className="bg-brand-50 text-brand-700 border border-brand-200 px-3 py-2 rounded-lg"><strong>{products.length}</strong> produtos com saldo</span><span className="bg-surface-50 text-surface-700 border border-surface-200 px-3 py-2 rounded-lg"><strong>{totalUnitsAvailable.toLocaleString('pt-BR')}</strong> unidades disponíveis no bar</span></div>}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[430px] overflow-auto">
+        {locationId && <div className="flex shrink-0 flex-wrap gap-2 text-xs"><span className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-brand-700"><strong>{products.length}</strong> produtos</span><span className="rounded-lg border border-surface-200 bg-surface-50 px-2.5 py-1.5 text-surface-700"><strong>{totalUnitsAvailable.toLocaleString('pt-BR')}</strong> unidades disponíveis</span></div>}
+        <div className="grid min-h-[180px] flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto pr-1 lg:grid-cols-3">
           {filteredProducts.map((product) => <button key={product.id} onClick={() => addProduct(product)} className="text-left border border-surface-200 rounded-xl p-3 hover:border-brand-400 hover:bg-brand-50 transition-colors disabled:opacity-50" disabled={product.salePrice === null || quantityInCart(product.id) >= product.availableQuantity}>
             <p className="font-medium text-surface-900">{product.name}</p><p className="text-sm font-semibold text-emerald-700 mt-1">Disponível: {(product.availableQuantity - quantityInCart(product.id)).toLocaleString('pt-BR')} {product.unit}</p>{quantityInCart(product.id) > 0 && <p className="text-xs text-brand-600">No carrinho: {quantityInCart(product.id)} {product.unit}</p>}
             <p className={`mt-2 font-semibold ${product.salePrice === null ? 'text-red-500 text-xs' : 'text-brand-600'}`}>{product.salePrice === null ? 'Preço não cadastrado' : money(product.salePrice)}</p>
@@ -204,29 +205,29 @@ export default function Sales() {
         </div>
       </section>
 
-      <aside className="card overflow-hidden h-fit xl:sticky xl:top-20">
+      <aside className="card flex min-h-0 flex-col overflow-hidden">
         <div className="card-header flex items-center gap-2"><ShoppingCart size={19}/><h2 className="font-semibold">Carrinho ({cart.length})</h2></div>
-        <div className="divide-y max-h-[360px] overflow-auto">{cart.map((item) => <div key={item.id} className="p-4">
+        <div className="min-h-[80px] flex-1 divide-y overflow-y-auto">{cart.map((item) => <div key={item.id} className="p-3">
           <div className="flex justify-between gap-3"><div><p className="font-medium">{item.name}</p><p className="text-xs text-surface-500">{money(item.unitPrice)} / {item.unit}</p><p className="text-xs text-emerald-600">Saldo no bar: {item.availableQuantity} • após venda: {(item.availableQuantity - item.quantity).toLocaleString('pt-BR')}</p></div><button onClick={() => setCart((current) => current.filter((row) => row.id !== item.id))} className="text-red-500"><Trash2 size={16}/></button></div>
             <div className="flex items-center justify-between mt-3"><div className="flex items-center gap-2"><button className="p-1 border rounded" onClick={() => setQuantity(item.id, item.quantity - quantityStep(item.unit))}><Minus size={14}/></button><input className="w-16 text-center py-1" type="number" min={quantityStep(item.unit)} max={item.availableQuantity} step={quantityStep(item.unit)} value={item.quantity} onChange={(e) => setQuantity(item.id, Number(e.target.value))}/><button className="p-1 border rounded" onClick={() => setQuantity(item.id, item.quantity + quantityStep(item.unit))}><Plus size={14}/></button></div>
             {canOverridePrice ? <input title="Preço unitário" className="w-24 text-right py-1" type="number" min="0" step="0.01" value={item.unitPrice} onChange={(e) => setCart((current) => current.map((row) => row.id === item.id ? {...row, unitPrice: Number(e.target.value)} : row))}/> : <span className="font-semibold">{money(item.quantity * item.unitPrice)}</span>}</div>
         </div>)}</div>
-        {!cart.length && <p className="p-8 text-center text-surface-400">Carrinho vazio</p>}
-        <div className="p-4 space-y-3 bg-surface-50 border-t">
+        {!cart.length && <p className="flex flex-1 items-center justify-center p-4 text-center text-surface-400">Carrinho vazio</p>}
+        <div className="shrink-0 space-y-2 border-t bg-surface-50 p-3">
           <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs mb-1">Pagamento</label><select className="w-full" value={paymentMethod} disabled={!!selectedCommand} onChange={(e) => setPaymentMethod(e.target.value)}>{paymentMethods.filter(([value]) => value !== 'COMANDA' || selectedCommand).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div><div><label className="block text-xs mb-1">Desconto</label><input className="w-full" type="number" min="0" max={subtotal} step="0.01" value={discount || ''} onChange={(e) => setDiscount(Number(e.target.value))}/></div></div>
-          <input className="w-full" placeholder="Cliente (opcional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)}/><textarea className="w-full" rows={2} placeholder="Observações" value={notes} onChange={(e) => setNotes(e.target.value)}/>
+          <div className="grid grid-cols-2 gap-2"><input className="w-full" placeholder="Cliente (opcional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)}/><input className="w-full" placeholder="Observações" value={notes} onChange={(e) => setNotes(e.target.value)}/></div>
           <div className="flex justify-between text-sm"><span>Subtotal</span><span>{money(subtotal)}</span></div><div className="flex justify-between text-lg font-bold"><span>Total</span><span className="text-brand-600">{money(total)}</span></div>
           <button className="btn-primary w-full disabled:opacity-50" disabled={saving || !cart.length} onClick={finishSale}>{saving ? 'Processando...' : 'Concluir venda'}</button>
         </div>
       </aside>
     </div>}
 
-    <section className="card overflow-hidden"><div className="card-header flex justify-between"><h2 className="font-semibold">Vendas recentes</h2><div className="text-sm text-surface-500">{summary.completedSales} vendas • {money(summary.totalAmount)}</div></div>
+    {salesOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-surface-950/50 p-3 backdrop-blur-sm" onMouseDown={(event) => event.target === event.currentTarget && setSalesOpen(false)}><section className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><div className="card-header flex shrink-0 items-center justify-between gap-3"><div><h2 className="font-semibold">Vendas recentes</h2><p className="text-xs text-surface-500">{summary.completedSales} vendas • {money(summary.totalAmount)}</p></div><button className="rounded-lg p-2 text-surface-500 hover:bg-surface-100" title="Fechar" onClick={() => setSalesOpen(false)}><X size={19}/></button></div><div className="min-h-0 overflow-y-auto">
       <div className="divide-y md:hidden">{sales.map((sale) => <div key={sale.id} className="p-4"><div className="flex justify-between"><div><p className="font-semibold">Venda #{sale.number}</p><p className="text-xs text-surface-400">{sale.location.name} · {sale.registeredBy.name}{sale.command && ' · RFID'}</p><PrintStatus status={sale.printJobs?.[0]?.status}/></div><p className="font-semibold">{money(sale.totalAmount)}</p></div><div className="mt-3 flex items-center justify-between text-xs"><span className={sale.status === 'CONCLUIDA' ? 'text-emerald-600' : 'text-red-600'}>{sale.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'}</span><span className="text-surface-400">{new Date(sale.createdAt).toLocaleString('pt-BR')}</span><span className="flex gap-3"><button disabled={printingSaleId === sale.id || !workstation.bound} title="Reimprimir" onClick={() => void reprintSale(sale)} className="text-brand-600 disabled:opacity-40"><Printer size={16}/></button>{canReverse && sale.status === 'CONCLUIDA' && <button onClick={() => reverseSale(sale)} className="text-red-600"><RotateCcw size={16}/></button>}</span></div></div>)}</div>
       <div className="hidden overflow-x-auto md:block"><table className="w-full text-sm"><thead><tr className="bg-surface-50 border-b">{['Número','Data','Bar','Operador','Itens','Pagamento','Total','Situação',''].map((heading) => <th key={heading} className="text-left px-4 py-3 text-xs uppercase text-surface-600">{heading}</th>)}</tr></thead>
       <tbody>{sales.map((sale) => <tr key={sale.id} className="border-b border-surface-100"><td className="px-4 py-3 font-semibold">#{sale.number}{sale.command && <span className="ml-1 text-xs text-brand-600">RFID</span>}<PrintStatus status={sale.printJobs?.[0]?.status}/></td><td className="px-4 py-3">{new Date(sale.createdAt).toLocaleString('pt-BR')}</td><td className="px-4 py-3">{sale.location.name}</td><td className="px-4 py-3">{sale.registeredBy.name}</td><td className="px-4 py-3">{sale.items.length}</td><td className="px-4 py-3">{paymentMethods.find(([value]) => value === sale.paymentMethod)?.[1] || sale.paymentMethod}</td><td className="px-4 py-3 font-semibold">{money(sale.totalAmount)}</td><td className="px-4 py-3">{sale.status === 'CONCLUIDA' ? <span className="text-emerald-600">Concluída</span> : <span className="text-red-600">Estornada</span>}</td><td className="px-4 py-3"><span className="flex gap-3"><button disabled={printingSaleId === sale.id || !workstation.bound} title="Reimprimir" className="text-brand-600 disabled:opacity-40" onClick={() => void reprintSale(sale)}><Printer size={16}/></button>{canReverse && sale.status === 'CONCLUIDA' && <button title="Estornar" className="text-red-600" onClick={() => reverseSale(sale)}><RotateCcw size={16}/></button>}</span></td></tr>)}</tbody></table></div>
       {!sales.length && <p className="p-8 text-center text-surface-400">Nenhuma venda registrada</p>}
-    </section>
+    </div></section></div>}
   </div>;
 }
 
