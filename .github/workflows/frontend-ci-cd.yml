@@ -1,0 +1,55 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zantra-frontend-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI - Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Executar lint
+        run: npm run lint --if-present
+
+      - name: Executar testes
+        run: npm test --if-present
+
+      - name: Validar build
+        run: npm run build --if-present
+
+  deploy:
+    name: Deploy - Frontend
+    needs: ci
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - zantra-frontend-prod
+
+    steps:
+      - name: Atualizar frontend em produção
+        run: /opt/zantra/scripts/deploy-frontend.sh
