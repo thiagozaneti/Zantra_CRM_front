@@ -44,11 +44,7 @@ jobs:
   deploy:
     name: Deploy - Frontend
     needs: ci
-    runs-on:
-      - self-hosted
-      - linux
-      - x64
-      - zantra-frontend-prod
+    runs-on: [self-hosted, linux, x64]
 
     steps:
       - name: Atualizar frontend em produção
