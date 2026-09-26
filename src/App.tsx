@@ -26,6 +26,7 @@ import Closings from './pages/Closings';
 import Inventories from './pages/Inventories';
 import Commands from './pages/Commands';
 import PrinterSettings from './pages/PrinterSettings';
+import Kiosks from './pages/Kiosks';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="closings" element={<ProtectedRoute module="closing"><Closings /></ProtectedRoute>} />
         <Route path="inventories" element={<ProtectedRoute module="inventory"><Inventories /></ProtectedRoute>} />
         <Route path="printer" element={<ProtectedRoute module="printer"><PrinterSettings /></ProtectedRoute>} />
+        <Route path="kiosks" element={<ProtectedRoute module="kiosks"><Kiosks /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

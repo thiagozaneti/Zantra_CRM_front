@@ -20,6 +20,7 @@ const modulePermissions: Record<string, string> = {
   inventory: 'inventory:view',
   commands: 'commands:view',
   printer: 'printer:view',
+  kiosks: 'kiosks:view',
 };
 
 const navItems = [
@@ -40,6 +41,7 @@ const navItems = [
   { to: '/users', icon: Users, label: 'Usuários', module: 'users', group: 'Administração' },
   { to: '/audit', icon: Shield, label: 'Auditoria', module: 'audit', group: 'Administração' },
   { to: '/printer', icon: Printer, label: 'Impressora', module: 'printer', group: 'Administração' },
+  { to: '/kiosks', icon: MapPin, label: 'Quiosques', module: 'kiosks', group: 'Administração' },
   { to: '/security', icon: KeyRound, label: 'Segurança', module: 'security', group: 'Administração' },
 ];
 

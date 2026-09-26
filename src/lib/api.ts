@@ -6,7 +6,7 @@ export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string) { super(message); this.name = 'ApiError'; }
 }
 
-async function request(url: string, options: RequestInit = {}) {
+export async function request(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem('zantra_token');
   const headers: any = {
     'Content-Type': 'application/json',
