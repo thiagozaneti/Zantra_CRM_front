@@ -25,7 +25,7 @@ const roleColors: Record<string, string> = {
   FRENTE_VENDAS: 'bg-pink-100 text-pink-700',
 };
 
-interface User { id: string; name: string; email: string; role: string; active: boolean; createdAt: string; assignedLocationId?: string | null; assignedLocation?: { name: string } | null; locations?: Array<{ id: string; name: string; type: string; allowsSale: boolean }>; permissionsConfigured?: boolean; }
+interface User { id: string; name: string; email: string; username?: string | null; role: string; active: boolean; createdAt: string; assignedLocationId?: string | null; assignedLocation?: { name: string } | null; locations?: Array<{ id: string; name: string; type: string; allowsSale: boolean }>; permissionsConfigured?: boolean; }
 
 export default function Users() {
   const canManagePermissions = hasActionPermission('permissions:manage');
@@ -39,7 +39,7 @@ export default function Users() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'SOMENTE_LEITURA', locationIds: [] as string[], permissions: [] as string[] });
+  const [form, setForm] = useState({ name: '', email: '', username: '', password: '', role: 'SOMENTE_LEITURA', locationIds: [] as string[], permissions: [] as string[] });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -59,10 +59,10 @@ export default function Users() {
     finally { setLoading(false); }
   };
 
-  const openNew = () => { setEditing(null); setForm({ name: '', email: '', password: '', role: 'SOMENTE_LEITURA', locationIds: [], permissions: templates.SOMENTE_LEITURA || [] }); setShowModal(true); setError(''); };
+  const openNew = () => { setEditing(null); setForm({ name: '', email: '', username: '', password: '', role: 'SOMENTE_LEITURA', locationIds: [], permissions: templates.SOMENTE_LEITURA || [] }); setShowModal(true); setError(''); };
   const openEdit = async (u: User) => {
     setEditing(u); setShowModal(true); setError('');
-    setForm({ name: u.name, email: u.email, password: '', role: u.role, locationIds: u.locations?.map((location) => location.id) || (u.assignedLocationId ? [u.assignedLocationId] : []), permissions: templates[u.role] || [] });
+    setForm({ name: u.name, email: u.email, username: u.username || '', password: '', role: u.role, locationIds: u.locations?.map((location) => location.id) || (u.assignedLocationId ? [u.assignedLocationId] : []), permissions: templates[u.role] || [] });
     try { if (canManagePermissions) { const result = await api.getUserPermissions(u.id); setForm((current) => ({ ...current, permissions: result.permissions })); } }
     catch (err: any) { setError(err.message); }
   };
@@ -88,13 +88,14 @@ export default function Users() {
 
   const handleSave = async () => {
     if (!form.name || !form.email) { setError('Nome e email são obrigatórios'); return; }
+    if (form.username.trim() && !/^[a-z0-9._-]{3,64}$/i.test(form.username.trim())) { setError('O usuário deve ter de 3 a 64 caracteres: letras sem acento, números, ponto, hífen ou sublinhado.'); return; }
     if (!editing && !form.password) { setError('Senha é obrigatória para novos usuários'); return; }
     if (form.role === 'FRENTE_VENDAS' && !form.locationIds.length) { setError('Selecione ao menos um local do operador de vendas'); return; }
     setSaving(true); setError('');
     const permissionsToSave = form.permissions.filter((permission) => !['inventory:create', 'inventory:approve'].includes(permission) || ['ADMINISTRADOR', 'GERENTE'].includes(form.role));
     try {
       if (editing) {
-        const data: any = { name: form.name, email: form.email, role: form.role, locationIds: form.locationIds };
+        const data: any = { name: form.name, email: form.email, username: form.username, role: form.role, locationIds: form.locationIds };
         if (form.password) data.password = form.password;
         await api.updateUser(editing.id, data);
         if (canManagePermissions) await api.updateUserPermissions(editing.id, permissionsToSave);
@@ -159,6 +160,7 @@ export default function Users() {
                 <div>
                   <h3 className="font-semibold text-surface-900">{u.name}</h3>
                   <p className="text-sm text-surface-500">{u.email}</p>
+                  {u.username && <p className="text-xs text-surface-500">Usuário: {u.username}</p>}
                 </div>
               </div>
               <div className="flex gap-1">
@@ -201,6 +203,11 @@ export default function Users() {
               <div>
                 <label className="block text-sm font-medium text-surface-700 mb-1.5">Email *</label>
                 <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full" />
+              </div>
+              <div>
+                <label htmlFor="user-username" className="block text-sm font-medium text-surface-700 mb-1.5">Nome de usuário (opcional)</label>
+                <input id="user-username" autoComplete="off" maxLength={64} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} className="w-full" placeholder="Ex.: joao.silva" />
+                <p className="text-xs text-surface-500 mt-1.5">De 3 a 64 caracteres: letras sem acento, números, ponto, hífen ou sublinhado.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-surface-700 mb-1.5">{editing ? 'Nova Senha (deixe vazio para manter)' : 'Senha *'}</label>

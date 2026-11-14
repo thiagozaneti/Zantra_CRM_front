@@ -65,8 +65,8 @@ export async function request(url: string, options: RequestInit = {}) {
 
 export const api = {
   // Auth
-  login: (email: string, password: string) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  login: (identifier: string, password: string) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email: identifier, password }) }),
   getSessions: () => request('/auth/sessions'),
   revokeSession: (id: string) => request(`/auth/sessions/${id}`, { method: 'DELETE' }),
   changePassword: (data: any) => request('/auth/change-password', { method: 'PUT', body: JSON.stringify(data) }),

@@ -11,7 +11,7 @@ const benefits = [
 ];
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +24,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
+      await login(identifier.trim(), password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || 'Não foi possível entrar. Verifique suas credenciais.');
@@ -74,10 +74,10 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4 2xl:space-y-5">
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-medium text-surface-700">E-mail</label>
+            <label htmlFor="identifier" className="mb-2 block text-sm font-medium text-surface-700">E-mail ou usuário</label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400" size={18}/>
-              <input id="email" type="email" autoComplete="email" autoFocus value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded-xl border-surface-200 py-3 pl-11 pr-4" placeholder="seuemail@empresa.com" required/>
+              <input id="identifier" type="text" autoComplete="username" autoCapitalize="none" autoFocus value={identifier} onChange={(event) => setIdentifier(event.target.value)} className="w-full rounded-xl border-surface-200 py-3 pl-11 pr-4" placeholder="Digite seu e-mail ou usuário" required/>
             </div>
           </div>
 
