@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Suspense, useEffect, useState } from 'react';
+import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import {
-  LayoutDashboard, Package, MapPin, ArrowDownToLine, ArrowLeftRight,
-  Warehouse, FileText, Users, Shield, LogOut, Menu, GlassWater, ShoppingCart,
-  PanelLeftClose, PanelLeftOpen, PackagePlus, KeyRound, Bell, ClipboardList, CalendarCheck, ClipboardCheck, CreditCard, Printer, CircleDollarSign
-} from 'lucide-react';
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Bell, Search, X } from 'lucide-react';
 import icon from '../images/icon.png';
 import rioDasPedrasLogo from '../images/LOGO-ACQUA-PARK-TOPO-SITE-300X300-1.png';
 import { api } from '../lib/api';
+import { activeNavigation, visibleNavigation } from '../lib/navigation';
+import { useToast } from './Toast';
 
 const modulePermissions: Record<string, string> = {
   dashboard: 'dashboard:view', products: 'products:view', locations: 'locations:view', entries: 'entries:view',
@@ -24,29 +22,6 @@ const modulePermissions: Record<string, string> = {
   printer: 'printer:view',
   kiosks: 'kiosks:view',
 };
-
-const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard', module: 'dashboard', group: 'Visão geral' },
-  { to: '/products', icon: Package, label: 'Produtos', module: 'products', group: 'Cadastros' },
-  { to: '/locations', icon: MapPin, label: 'Locais', module: 'locations', group: 'Cadastros' },
-  { to: '/entries', icon: ArrowDownToLine, label: 'Entradas', module: 'entries', group: 'Movimentações' },
-  { to: '/supplies', icon: PackagePlus, label: 'Abastecimento', module: 'supplies', group: 'Movimentações' },
-  { to: '/transfers', icon: ArrowLeftRight, label: 'Transferências', module: 'transfers', group: 'Movimentações' },
-  { to: '/stock', icon: Warehouse, label: 'Estoque', module: 'stock', group: 'Movimentações' },
-  { to: '/inventories', icon: ClipboardCheck, label: 'Inventários', module: 'inventory', group: 'Controle' },
-  { to: '/consumption', icon: GlassWater, label: 'Consumo Interno', module: 'consumption', group: 'Movimentações' },
-  { to: '/sales', icon: ShoppingCart, label: 'Frente de Vendas', module: 'sales', group: 'Movimentações' },
-  { to: '/commands', icon: CreditCard, label: 'Comandas', module: 'commands', group: 'Movimentações' },
-  { to: '/card-refunds', icon: CircleDollarSign, label: 'Estorno de saldo', module: 'card-refunds', group: 'Movimentações' },
-  { to: '/pending', icon: ClipboardList, label: 'Pendências', module: 'pending', group: 'Controle' },
-  { to: '/closings', icon: CalendarCheck, label: 'Fechamentos', module: 'closing', group: 'Controle' },
-  { to: '/reports', icon: FileText, label: 'Relatórios', module: 'reports', group: 'Controle' },
-  { to: '/users', icon: Users, label: 'Usuários', module: 'users', group: 'Administração' },
-  { to: '/audit', icon: Shield, label: 'Auditoria', module: 'audit', group: 'Administração' },
-  { to: '/printer', icon: Printer, label: 'Impressora', module: 'printer', group: 'Administração' },
-  { to: '/kiosks', icon: MapPin, label: 'Quiosques', module: 'kiosks', group: 'Administração' },
-  { to: '/security', icon: KeyRound, label: 'Segurança', module: 'security', group: 'Administração' },
-];
 
 export function hasPermission(module: string): boolean {
   const userStr = localStorage.getItem('zantra_user');
@@ -77,11 +52,14 @@ const roleLabels: Record<string, string> = {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('zantra_sidebar_collapsed') === 'true');
   const [notifications, setNotifications] = useState<any>({ data: [], unread: 0 });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [search, setSearch] = useState('');
   useEffect(() => { const load = () => api.getNotifications().then(setNotifications).catch(() => undefined); load(); const timer = setInterval(load, 60000); return () => clearInterval(timer); }, []);
 
   const toggleDesktopSidebar = () => {
@@ -98,8 +76,18 @@ export default function Layout() {
   };
 
   const userPerms = user?.permissions || [];
-  const filteredNav = navItems.filter((item) => userPerms.includes(modulePermissions[item.module]));
+  const groups = visibleNavigation(userPerms);
+  const activeGroup = activeNavigation(location.pathname);
+  const activePages = groups.find((group) => group.id === activeGroup?.id)?.pages || [];
+  const searchTerm = search.trim().toLocaleLowerCase('pt-BR');
+  const searchResults = groups.flatMap((group) => group.pages).filter((page) => searchTerm && `${page.label} ${page.description}`.toLocaleLowerCase('pt-BR').includes(searchTerm));
   useEffect(() => { if (user?.mustChangePassword && window.location.pathname !== '/security') navigate('/security'); }, [user?.mustChangePassword]);
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') setSidebarOpen(false); };
+    document.addEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', close);
+  }, [sidebarOpen]);
 
   return (
     <div className="h-screen overflow-hidden flex bg-surface-50">
@@ -129,28 +117,27 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 overflow-y-auto py-4 px-3 ${sidebarCollapsed ? 'lg:px-2' : ''}`}>
+        <nav aria-label="Áreas do sistema" className={`flex-1 overflow-y-auto py-4 px-3 ${sidebarCollapsed ? 'lg:px-2' : ''}`}>
           <div className="space-y-1">
-            {filteredNav.map((item, index) => (
-              <div key={item.to}>
-              {(index === 0 || filteredNav[index - 1].group !== item.group) && <p className={`px-3 pb-1 pt-4 first:pt-0 text-[10px] font-semibold uppercase tracking-wider text-surface-400 ${sidebarCollapsed ? 'lg:hidden' : ''}`}>{item.group}</p>}
-              <NavLink
-                to={item.to}
-                end={item.to === '/'}
+            {groups.map((item) => (
+              <Link
+                key={item.id}
+                to={item.id === 'home' ? '/' : item.pages[0].path}
                 onClick={() => setSidebarOpen(false)}
-                title={sidebarCollapsed ? item.label : undefined}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${sidebarCollapsed ? 'lg:justify-center' : ''} ${
-                    isActive
+                title={item.label}
+                aria-label={item.label}
+                aria-current={activeGroup?.id === item.id ? 'page' : undefined}
+                className={
+                  `flex min-h-12 items-center gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${sidebarCollapsed ? 'lg:justify-center' : ''} ${
+                    activeGroup?.id === item.id
                       ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-100'
                       : 'text-surface-600 hover:text-surface-900 hover:bg-surface-100'
                   }`
                 }
               >
-                <item.icon size={18} className="shrink-0" />
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${item.color}`}><item.icon size={21} aria-hidden="true" /></span>
                 <span className={sidebarCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
-              </NavLink>
-              </div>
+              </Link>
             ))}
           </div>
         </nav>
@@ -168,7 +155,7 @@ export default function Layout() {
             <button
               onClick={handleLogout}
               className="text-surface-500 hover:text-red-600 hover:bg-red-50 rounded-lg p-2 shrink-0"
-              title="Sair"
+              title="Sair" aria-label="Sair da conta"
             >
               <LogOut size={18} />
             </button>
@@ -183,6 +170,7 @@ export default function Layout() {
           <button
             className="lg:hidden text-surface-600 hover:text-surface-900 p-2 -ml-2 mr-2"
             onClick={() => setSidebarOpen(true)}
+            aria-label="Abrir menu" aria-expanded={sidebarOpen}
           >
             <Menu size={24} />
           </button>
@@ -194,17 +182,17 @@ export default function Layout() {
           >
             {sidebarCollapsed ? <PanelLeftOpen size={21} /> : <PanelLeftClose size={21} />}
           </button>
+          <div className="relative ml-2 min-w-0 max-w-sm flex-1"><label htmlFor="find-page" className="sr-only">Encontrar uma tela</label><Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-500"/><input id="find-page" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setSearch(''); }} placeholder="Encontrar uma tela" className="w-full py-2 pl-9 pr-9"/>{search && <button type="button" aria-label="Limpar busca de telas" onClick={() => setSearch('')} className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1.5"><X size={16}/></button>}{searchTerm && <div className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-surface-200 bg-white p-2 shadow-lg">{searchResults.map((page) => <NavLink key={page.path} to={page.path} onClick={() => setSearch('')} className="block rounded-lg px-3 py-2 hover:bg-brand-50"><span className="block text-sm font-semibold">{page.label}</span><span className="block text-xs text-surface-600">{page.description}</span></NavLink>)}{!searchResults.length && <p className="p-3 text-sm text-surface-600">Nenhuma tela encontrada entre seus acessos.</p>}</div>}</div>
           <div className="flex-1" />
-          <div className="relative mr-2"><button onClick={() => setNotificationsOpen((value) => !value)} className="relative rounded-lg p-2 text-surface-500 hover:bg-surface-100" aria-label="Notificações"><Bell size={19}/>{notifications.unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"/>}</button>{notificationsOpen && <div className="absolute right-0 top-11 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-lg border bg-white shadow-xl"><div className="flex items-center justify-between border-b px-4 py-3"><p className="text-sm font-semibold">Notificações</p><button className="text-xs text-brand-600" onClick={async () => { await api.readAllNotifications(); setNotifications((current: any) => ({ ...current, unread: 0, data: current.data.map((item: any) => ({ ...item, readAt: new Date() })) })); }}>Marcar como lidas</button></div><div className="max-h-80 divide-y overflow-auto">{notifications.data.map((item: any) => <button key={item.id} className={`block w-full p-4 text-left hover:bg-surface-50 ${!item.readAt ? 'bg-brand-50/50' : ''}`} onClick={async () => { await api.readNotification(item.id); setNotificationsOpen(false); if (item.link) navigate(item.link); }}><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-xs text-surface-500">{item.message}</p><p className="mt-1 text-[10px] text-surface-400">{new Date(item.createdAt).toLocaleString('pt-BR')}</p></button>)}{!notifications.data.length && <p className="p-6 text-center text-sm text-surface-400">Nenhuma notificação</p>}</div></div>}</div>
-          <div className="hidden sm:flex items-center gap-2 text-sm text-surface-500">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            Sistema ativo
-          </div>
+          <div className="relative mr-2"><button onClick={() => setNotificationsOpen((value) => !value)} className="relative rounded-lg p-2 text-surface-600 hover:bg-surface-100" aria-label={`Notificações${notifications.unread ? `, ${notifications.unread} não lidas` : ''}`} aria-expanded={notificationsOpen}><Bell size={19}/>{notifications.unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"/>}</button>{notificationsOpen && <div className="absolute right-0 top-11 z-50 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-lg border bg-white shadow-xl"><div className="flex items-center justify-between border-b px-4 py-3"><p className="text-sm font-semibold">Notificações</p><button className="text-sm text-brand-700" onClick={async () => { try { await api.readAllNotifications(); setNotifications((current: any) => ({ ...current, unread: 0, data: current.data.map((item: any) => ({ ...item, readAt: new Date() })) })); } catch { showToast('error', 'Não foi possível atualizar as notificações. Tente novamente.'); } }}>Marcar como lidas</button></div><div className="max-h-80 divide-y overflow-auto">{notifications.data.map((item: any) => <button key={item.id} className={`block w-full p-4 text-left hover:bg-surface-50 ${!item.readAt ? 'bg-brand-50/50' : ''}`} onClick={async () => { try { await api.readNotification(item.id); setNotificationsOpen(false); if (item.link) navigate(item.link); } catch { showToast('error', 'Não foi possível abrir a notificação. Tente novamente.'); } }}><p className="text-sm font-medium">{item.title}</p><p className="mt-1 text-sm text-surface-600">{item.message}</p><p className="mt-1 text-xs text-surface-600">{new Date(item.createdAt).toLocaleString('pt-BR')}</p></button>)}{!notifications.data.length && <p className="p-6 text-center text-sm text-surface-600">Nenhuma notificação</p>}</div></div>}</div>
+          <span className="hidden max-w-40 truncate text-sm text-surface-600 sm:block">{user?.name}</span>
         </header>
+
+        {activeGroup && activeGroup.id !== 'home' && <div className="shrink-0 border-b border-surface-200 bg-white px-4"><div className="flex min-h-11 items-center gap-4"><span className="hidden shrink-0 text-sm font-semibold text-surface-700 md:block">{activeGroup.label}</span>{activePages.length > 1 && <nav aria-label={`Páginas de ${activeGroup.label}`} className="flex min-w-0 gap-1 overflow-x-auto">{activePages.map((page) => <NavLink key={page.path} to={page.path} className={({ isActive }) => `whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-surface-600 hover:text-surface-900'}`}>{page.label}</NavLink>)}</nav>}{activePages.length === 1 && <span className="py-3 text-sm text-surface-600">{activePages[0].label}</span>}</div></div>}
 
         {/* Page content */}
         <main className="flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden overscroll-contain">
-          <Outlet />
+          <Suspense fallback={<div role="status" className="p-8 text-center text-surface-700">Carregando tela...</div>}><Outlet /></Suspense>
         </main>
       </div>
     </div>

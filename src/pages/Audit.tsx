@@ -7,6 +7,7 @@ export default function Audit() {
   const [logs, setLogs] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
   const [showFilters, setShowFilters] = useState(true);
 
@@ -15,11 +16,13 @@ export default function Audit() {
   const [fStartDate, setFStartDate] = useState('');
   const [fEndDate, setFEndDate] = useState('');
 
-  useEffect(() => { loadLogs(); loadUsers(); }, [pagination.page, fUserId, fOperationType, fStartDate, fEndDate]);
+  useEffect(() => { loadLogs(); }, [pagination.page, fUserId, fOperationType, fStartDate, fEndDate]);
+  useEffect(() => { loadUsers(); }, []);
 
   const loadLogs = async () => {
     try {
       setLoading(true);
+      setError('');
       const params = new URLSearchParams();
       if (fUserId) params.set('userId', fUserId);
       if (fOperationType) params.set('operationType', fOperationType);
@@ -29,7 +32,7 @@ export default function Audit() {
       const result = await api.getAuditLogs(params.toString());
       setLogs(result.data);
       setPagination(result.pagination);
-    } catch (err: any) { console.error(err); }
+    } catch (err: any) { console.error(err); setError('Não foi possível carregar o histórico. Confira a conexão e tente novamente.'); }
     finally { setLoading(false); }
   };
 
@@ -62,28 +65,30 @@ export default function Audit() {
         <p className="text-surface-500 mt-1 text-sm">Histórico completo de operações do sistema</p>
       </div>
 
+      {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button className="font-semibold underline" onClick={loadLogs}>Tentar novamente</button></div>}
+
       {/* Filters */}
       <div className="card">
-        <div className="px-4 py-3 border-b border-surface-200 flex items-center justify-between cursor-pointer" onClick={() => setShowFilters(!showFilters)}>
+        <button type="button" aria-expanded={showFilters} className="w-full px-4 py-3 border-b border-surface-200 flex items-center justify-between text-left" onClick={() => setShowFilters(!showFilters)}>
           <div className="flex items-center gap-2 text-sm font-medium text-surface-700">
             <Filter size={16} />
             Filtros
           </div>
           <span className="text-surface-400">{showFilters ? '▲' : '▼'}</span>
-        </div>
+        </button>
         {showFilters && (
           <div className="card-body">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Usuário</label>
-                <select value={fUserId} onChange={(e) => { setFUserId(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
+                <label htmlFor="audit-filter-1" className="block text-xs font-medium text-surface-500 mb-1.5">Usuário</label>
+                <select id="audit-filter-1" value={fUserId} onChange={(e) => { setFUserId(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
                   <option value="">Todos</option>
                   {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Tipo de Operação</label>
-                <select value={fOperationType} onChange={(e) => { setFOperationType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
+                <label htmlFor="audit-filter-2" className="block text-xs font-medium text-surface-500 mb-1.5">Tipo de Operação</label>
+                <select id="audit-filter-2" value={fOperationType} onChange={(e) => { setFOperationType(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
                   <option value="">Todas</option>
                   <option value="ENTRADA">Entrada</option>
                   <option value="TRANSFER">Transferência</option>
@@ -91,12 +96,12 @@ export default function Audit() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Data Início</label>
-                <input type="date" value={fStartDate} onChange={(e) => { setFStartDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
+                <label htmlFor="audit-filter-3" className="block text-xs font-medium text-surface-500 mb-1.5">Data Início</label>
+                <input id="audit-filter-3" type="date" value={fStartDate} onChange={(e) => { setFStartDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Data Fim</label>
-                <input type="date" value={fEndDate} onChange={(e) => { setFEndDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
+                <label htmlFor="audit-filter-4" className="block text-xs font-medium text-surface-500 mb-1.5">Data Fim</label>
+                <input id="audit-filter-4" type="date" value={fEndDate} onChange={(e) => { setFEndDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
               </div>
             </div>
           </div>

@@ -19,6 +19,7 @@ export default function Products() {
   const { confirm } = useConfirm();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
@@ -30,12 +31,14 @@ export default function Products() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { loadProducts(); loadCategories(); }, [search, category, pagination.page]);
+  useEffect(() => { loadProducts(); }, [search, category, pagination.page]);
+  useEffect(() => { loadCategories(); }, []);
   useEffect(() => { api.getUnits().then(setUnits).catch(() => undefined); }, []);
 
   const loadProducts = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (category) params.set('category', category);
@@ -43,7 +46,7 @@ export default function Products() {
       const result = await api.getProducts(params.toString());
       setProducts(result.data);
       setPagination(result.pagination);
-    } catch (err: any) { setError(err.message); }
+    } catch { setLoadError(true); }
     finally { setLoading(false); }
   };
 
@@ -88,6 +91,7 @@ export default function Products() {
 
   return (
     <div className="space-y-4 lg:space-y-6">
+      {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar os produtos. <button className="font-semibold underline" onClick={loadProducts}>Tentar novamente</button></p>}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-surface-900">Produtos</h1>
@@ -101,9 +105,9 @@ export default function Products() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" size={18} />
-          <input placeholder="Buscar produto..." value={search} onChange={(e) => { setSearch(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full pl-10" />
+          <input aria-label="Buscar produto" placeholder="Buscar produto..." value={search} onChange={(e) => { setSearch(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full pl-10" />
         </div>
-        <select value={category} onChange={(e) => { setCategory(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full sm:w-48">
+        <select aria-label="Filtrar por categoria" value={category} onChange={(e) => { setCategory(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full sm:w-48">
           <option value="">Todas categorias</option>
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -114,7 +118,7 @@ export default function Products() {
         {loading ? (
           <div className="text-center py-12 text-surface-400">Carregando...</div>
         ) : products.length === 0 ? (
-          <div className="text-center py-12 text-surface-400">Nenhum produto encontrado</div>
+          <div className="text-center py-12 text-surface-600">{loadError ? 'Produtos indisponíveis no momento.' : 'Nenhum produto encontrado para esta busca.'}</div>
         ) : products.map((p, index) => (
           <div key={p.id} className="mobile-card fade-in" style={{ animationDelay: `${index * 0.03}s` }}>
             <div className="flex items-start justify-between mb-3">
@@ -175,7 +179,7 @@ export default function Products() {
               {loading ? (
                 <tr><td colSpan={10} className="text-center py-12 text-surface-400">Carregando...</td></tr>
               ) : products.length === 0 ? (
-                <tr><td colSpan={10} className="text-center py-12 text-surface-400">Nenhum produto encontrado</td></tr>
+                <tr><td colSpan={10} className="text-center py-12 text-surface-600">{loadError ? 'Produtos indisponíveis no momento.' : 'Nenhum produto encontrado para esta busca.'}</td></tr>
               ) : products.map((p, index) => (
                 <tr key={p.id} className="border-b border-surface-100 hover:bg-surface-50 fade-in" style={{ animationDelay: `${index * 0.03}s` }}>
                   <td className="px-4 py-3">
@@ -224,50 +228,50 @@ export default function Products() {
           <div className="bg-white w-full lg:max-w-lg lg:rounded-2xl max-h-[95vh] lg:max-h-[90vh] overflow-hidden shadow-xl scale-in rounded-t-2xl lg:rounded-2xl">
             <div className="flex justify-between items-center px-6 py-4 border-b border-surface-200">
               <h2 className="text-lg font-semibold text-surface-900">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-surface-400 hover:text-surface-600 p-1 hover:rotate-90 transition-transform duration-200"><X size={20} /></button>
+              <button aria-label="Fechar cadastro de produto" onClick={() => setShowModal(false)} className="text-surface-400 hover:text-surface-600 p-1 hover:rotate-90 transition-transform duration-200"><X size={20} /></button>
             </div>
             <div className="p-4 lg:p-6 overflow-y-auto max-h-[80vh] lg:max-h-[60vh] space-y-4">
               {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Nome *</label>
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" />
+                  <label htmlFor="product-name" className="block text-sm font-medium text-surface-700 mb-1.5">Nome *</label>
+                  <input id="product-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Categoria</label>
-                  <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full" />
+                  <label htmlFor="product-category" className="block text-sm font-medium text-surface-700 mb-1.5">Categoria</label>
+                  <input id="product-category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Unidade *</label>
-                  <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value, minStock: 0 })} className="w-full">
+                  <label htmlFor="product-unit" className="block text-sm font-medium text-surface-700 mb-1.5">Unidade *</label>
+                  <select id="product-unit" value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value, minStock: 0 })} className="w-full">
                     {units.map((unit) => <option key={unit.code} value={unit.symbol}>{unit.label} ({unit.symbol}) — {unit.fractional ? 'fracionável' : 'inteira'}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">SKU</label>
-                  <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="w-full" />
+                  <label htmlFor="product-sku" className="block text-sm font-medium text-surface-700 mb-1.5">Código interno (SKU)</label>
+                  <input id="product-sku" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Código de Barras</label>
-                  <input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className="w-full" />
+                  <label htmlFor="product-barcode" className="block text-sm font-medium text-surface-700 mb-1.5">Código de barras</label>
+                  <input id="product-barcode" value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} className="w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Marca</label>
-                  <input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="w-full" />
+                  <label htmlFor="product-brand" className="block text-sm font-medium text-surface-700 mb-1.5">Marca</label>
+                  <input id="product-brand" value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} className="w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Fornecedor</label>
-                  <input value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className="w-full" />
+                  <label htmlFor="product-supplier" className="block text-sm font-medium text-surface-700 mb-1.5">Fornecedor</label>
+                  <input id="product-supplier" value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} className="w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Estoque Mínimo</label>
-                  <input type="number" min="0" step={quantityStep(form.unit)} value={form.minStock} onChange={(e) => setForm({ ...form, minStock: Number(e.target.value) })} className="w-full" />
+                  <label htmlFor="product-minimum" className="block text-sm font-medium text-surface-700 mb-1.5">Estoque mínimo</label>
+                  <input id="product-minimum" type="number" min="0" step={quantityStep(form.unit)} value={form.minStock} onChange={(e) => setForm({ ...form, minStock: Number(e.target.value) })} className="w-full" />
                 </div>
-                <div><label className="block text-sm font-medium text-surface-700 mb-1.5">Preço de Venda</label><input type="number" min="0" step="0.01" value={form.salePrice ?? ''} onChange={(e) => setForm({ ...form, salePrice: e.target.value === '' ? null : Number(e.target.value) })} className="w-full" placeholder="R$ 0,00" /></div>
-                <div className="col-span-2"><label className="block text-sm font-medium text-surface-700 mb-1.5">Fluxo de abastecimento *</label><select value={form.supplyFlow} onChange={(e) => setForm({ ...form, supplyFlow: e.target.value })} className="w-full"><option value="CAMARA_FRIA_OBRIGATORIA">Obrigatório passar pela câmara fria</option><option value="DIRETO_BAR_PERMITIDO">Entrada direta no bar permitida</option></select><p className="text-xs text-surface-500 mt-1">Produtos com entrada direta também podem ser recebidos em uma câmara, quando necessário.</p></div>
+                <div><label htmlFor="product-price" className="block text-sm font-medium text-surface-700 mb-1.5">Preço de venda</label><input id="product-price" type="number" min="0" step="0.01" value={form.salePrice ?? ''} onChange={(e) => setForm({ ...form, salePrice: e.target.value === '' ? null : Number(e.target.value) })} className="w-full" placeholder="R$ 0,00" /></div>
+                <div className="col-span-2"><label htmlFor="product-flow" className="block text-sm font-medium text-surface-700 mb-1.5">Como o produto pode ser recebido? *</label><select id="product-flow" value={form.supplyFlow} onChange={(e) => setForm({ ...form, supplyFlow: e.target.value })} className="w-full"><option value="CAMARA_FRIA_OBRIGATORIA">Obrigatório passar pela câmara fria</option><option value="DIRETO_BAR_PERMITIDO">Entrada direta no bar permitida</option></select><p className="text-xs text-surface-500 mt-1">Produtos com entrada direta também podem ser recebidos em uma câmara, quando necessário.</p></div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Observações</label>
-                  <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full" rows={2} />
+                  <label htmlFor="product-notes" className="block text-sm font-medium text-surface-700 mb-1.5">Observações</label>
+                  <textarea id="product-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full" rows={2} />
                 </div>
               </div>
             </div>

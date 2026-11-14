@@ -31,9 +31,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => [...prev.slice(-2), { id, type, message }]);
   }, []);
 
-  const removeToast = (id: string) => {
+  const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast }}>
@@ -49,7 +49,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
   useEffect(() => {
-    const timer = setTimeout(() => onRemove(toast.id), 4000);
+    const timer = setTimeout(() => onRemove(toast.id), toast.type === 'error' || toast.type === 'warning' ? 10000 : 6000);
     return () => clearTimeout(timer);
   }, [toast.id, onRemove]);
 
@@ -68,9 +68,9 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   };
 
   return (
-    <div role="status" className={`pointer-events-auto ${bgColors[toast.type]} flex items-start gap-3 rounded-lg border p-3.5 shadow-lg slide-down`}>
+    <div role={toast.type === 'error' ? 'alert' : 'status'} className={`pointer-events-auto ${bgColors[toast.type]} flex items-start gap-3 rounded-lg border p-3.5 shadow-lg slide-down`}>
       <span className="mt-0.5 shrink-0">{icons[toast.type]}</span>
-      <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-surface-800">{toastTitles[toast.type]}</p><p className="mt-0.5 break-words text-xs leading-relaxed text-surface-600">{toast.message}</p></div>
+      <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-surface-800">{toastTitles[toast.type]}</p><p className="mt-0.5 break-words text-sm leading-relaxed text-surface-700">{toast.message}</p></div>
       <button onClick={() => onRemove(toast.id)} className="shrink-0 rounded p-1 text-surface-400 hover:bg-black/5 hover:text-surface-700" aria-label="Fechar notificação">
         <X size={16} />
       </button>

@@ -8,21 +8,24 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import BarChart from '../components/BarChart';
 import { hasActionPermission } from '../components/Layout';
+import { useToast } from '../components/Toast';
 
 const money = (value: number | string) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const rechargePaymentLabels: Record<string, string> = { PIX: 'PIX', DINHEIRO: 'Dinheiro', CARTAO_DEBITO: 'Cartão de débito', CARTAO_CREDITO: 'Cartão de crédito', CHEQUE: 'Cheque' };
 
-export default function Dashboard() {
+export default function Dashboard({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuth();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [backingUp, setBackingUp] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const { showToast } = useToast();
   const canBackup = hasActionPermission('backup:export');
 
   const loadData = async () => {
-    try { setLoading(true); setData(await api.getDashboard()); }
-    catch (error) { console.error('Dashboard error:', error); }
+    try { setLoading(true); setLoadError(false); setData(await api.getDashboard()); }
+    catch (error) { console.error('Dashboard error:', error); setLoadError(true); }
     finally { setLoading(false); }
   };
 
@@ -34,12 +37,12 @@ export default function Dashboard() {
       const link = document.createElement('a');
       link.href = url; link.download = `zantra-backup-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
       URL.revokeObjectURL(url);
-    } finally { setBackingUp(false); }
+    } catch { showToast('error', 'Não foi possível gerar o backup. Tente novamente.'); } finally { setBackingUp(false); }
   };
 
   useEffect(() => { loadData(); }, []);
   if (loading && !data) return <Loading/>;
-  if (!data) return <div className="border border-surface-200 bg-white p-8 text-center text-surface-500">Não foi possível carregar o dashboard.</div>;
+  if (!data) return <div role="alert" className="border border-surface-200 bg-white p-8 text-center text-surface-600">Não foi possível carregar os indicadores. <button className="font-semibold text-brand-600 underline" onClick={loadData}>Tentar novamente</button></div>;
 
   const metrics = [
     { label: 'Produtos ativos', value: data.totalActiveProducts, detail: `${data.totalProducts} cadastrados`, icon: Package, color: 'text-blue-600', bar: 'bg-blue-500' },
@@ -59,9 +62,10 @@ export default function Dashboard() {
   const skuByLocation = Object.entries(data.management?.stockByLocation || {}).map(([name, value]) => ({ label: name.substring(0, 12), value: value as number, color: 'bg-violet-500' }));
 
   return <div className="mx-auto max-w-[1440px] space-y-6 pb-4">
+    {loadError && <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Não foi possível atualizar os indicadores. Os dados exibidos podem estar desatualizados.</p>}
     <header className="flex flex-col gap-4 border-b border-surface-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-surface-900">Olá, {user?.name?.split(' ')[0]}</h1>
+        {embedded ? <h2 className="text-xl font-semibold tracking-tight text-surface-900">Indicadores e atividades recentes</h2> : <h1 className="text-2xl font-semibold tracking-tight text-surface-900">Olá, {user?.name?.split(' ')[0]}</h1>}
         <p className="mt-1 text-sm text-surface-500">Visão geral da operação e dos indicadores de hoje.</p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -70,12 +74,12 @@ export default function Dashboard() {
       </div>
     </header>
 
-    <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-10">
+    <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
       {metrics.map((metric) => <div key={metric.label} className="relative min-w-0 overflow-hidden rounded-lg border border-surface-200 bg-white px-4 py-3.5">
         <span className={`absolute inset-x-0 top-0 h-0.5 ${metric.bar}`}/>
-        <div className="flex items-center justify-between gap-2"><p className="truncate text-xs font-medium text-surface-500">{metric.label}</p><metric.icon size={15} className={`shrink-0 ${metric.color}`}/></div>
-        <p className="mt-2 truncate text-xl font-semibold tabular-nums text-surface-900">{metric.value}</p>
-        <p className="mt-1 truncate text-[11px] text-surface-400">{metric.detail}</p>
+        <div className="flex items-center justify-between gap-2"><p className="text-sm font-medium text-surface-600">{metric.label}</p><metric.icon size={17} className={`shrink-0 ${metric.color}`}/></div>
+        <p className="mt-2 break-words text-xl font-semibold tabular-nums text-surface-900">{metric.value}</p>
+        <p className="mt-1 text-xs text-surface-600">{metric.detail}</p>
       </div>)}
     </section>
 

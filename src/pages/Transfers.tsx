@@ -153,23 +153,23 @@ export default function Transfers() {
           <div className="card-body">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Data Início</label>
-                <input type="date" value={fStartDate} onChange={(e) => { setFStartDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
+                <label htmlFor="transfers-filter-1" className="block text-xs font-medium text-surface-500 mb-1.5">Data Início</label>
+                <input id="transfers-filter-1" type="date" value={fStartDate} onChange={(e) => { setFStartDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Data Fim</label>
-                <input type="date" value={fEndDate} onChange={(e) => { setFEndDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
+                <label htmlFor="transfers-filter-2" className="block text-xs font-medium text-surface-500 mb-1.5">Data Fim</label>
+                <input id="transfers-filter-2" type="date" value={fEndDate} onChange={(e) => { setFEndDate(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Origem</label>
-                <select value={fOriginId} onChange={(e) => { setFOriginId(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
+                <label htmlFor="transfers-filter-3" className="block text-xs font-medium text-surface-500 mb-1.5">Origem</label>
+                <select id="transfers-filter-3" value={fOriginId} onChange={(e) => { setFOriginId(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
                   <option value="">Todas</option>
                   {coldRooms.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Destino</label>
-                <select value={fDestinationId} onChange={(e) => { setFDestinationId(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
+                <label htmlFor="transfers-filter-4" className="block text-xs font-medium text-surface-500 mb-1.5">Destino</label>
+                <select id="transfers-filter-4" value={fDestinationId} onChange={(e) => { setFDestinationId(e.target.value); setPagination(p => ({ ...p, page: 1 })); }} className="w-full">
                   <option value="">Todos</option>
                   {bars.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
@@ -255,23 +255,23 @@ export default function Transfers() {
               {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Local de origem *</label>
-                  <select value={form.originId} onChange={(e) => setForm({ ...form, originId: e.target.value, productId: '' })} className="w-full">
+                  <label htmlFor="transfer-origin" className="block text-sm font-medium text-surface-700 mb-1.5">Local de origem *</label>
+                  <select id="transfer-origin" value={form.originId} onChange={(e) => setForm({ ...form, originId: e.target.value, productId: '' })} className="w-full">
                     <option value="">Selecione...</option>
                     {coldRooms.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Destino (Bar) *</label>
-                  <select value={form.destinationId} onChange={(e) => setForm({ ...form, destinationId: e.target.value })} className="w-full">
+                  <label htmlFor="transfer-destination" className="block text-sm font-medium text-surface-700 mb-1.5">Local de destino *</label>
+                  <select id="transfer-destination" value={form.destinationId} onChange={(e) => setForm({ ...form, destinationId: e.target.value })} className="w-full">
                     <option value="">Selecione...</option>
                     {bars.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Produto *</label>
-                <select value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} className="w-full" disabled={!form.originId}>
+                <label htmlFor="transfer-product" className="block text-sm font-medium text-surface-700 mb-1.5">Produto *</label>
+                <select id="transfer-product" value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} className="w-full" disabled={!form.originId}>
                   <option value="">Selecione a origem primeiro...</option>
                   {availableProducts.map((p: any) => <option key={p.id} value={p.id}>{p.name} (Disponível: {p.availableQuantity} {p.unit})</option>)}
                 </select>
@@ -283,28 +283,28 @@ export default function Transfers() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Quantidade *</label>
-                <input type="number" min={quantityStep(selectedProduct?.unit)} step={quantityStep(selectedProduct?.unit)} value={form.quantity || ''} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} className="w-full" />
+                <label htmlFor="transfer-quantity" className="block text-sm font-medium text-surface-700 mb-1.5">Quantidade *</label>
+                <input id="transfer-quantity" type="number" min={quantityStep(selectedProduct?.unit)} step={quantityStep(selectedProduct?.unit)} value={form.quantity || ''} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} className="w-full" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Retirado por</label>
-                  <select value={form.withdrawnById} onChange={(e) => setForm({ ...form, withdrawnById: e.target.value })} className="w-full">
+                  <label htmlFor="transfer-withdrawer" className="block text-sm font-medium text-surface-700 mb-1.5">Retirado por</label>
+                  <select id="transfer-withdrawer" value={form.withdrawnById} onChange={(e) => setForm({ ...form, withdrawnById: e.target.value })} className="w-full">
                     <option value="">Selecione...</option>
                     {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-surface-700 mb-1.5">Recebido por</label>
-                  <select value={form.receivedById} onChange={(e) => setForm({ ...form, receivedById: e.target.value })} className="w-full">
+                  <label htmlFor="transfer-receiver" className="block text-sm font-medium text-surface-700 mb-1.5">Recebido por</label>
+                  <select id="transfer-receiver" value={form.receivedById} onChange={(e) => setForm({ ...form, receivedById: e.target.value })} className="w-full">
                     <option value="">Selecione...</option>
                     {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Observações</label>
-                <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full" rows={2} />
+                <label htmlFor="transfer-notes" className="block text-sm font-medium text-surface-700 mb-1.5">Observações</label>
+                <textarea id="transfer-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full" rows={2} />
               </div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.requiresConfirmation} onChange={(e) => setForm({ ...form, requiresConfirmation: e.target.checked })}/> Exigir confirmação de recebimento pelo bar</label>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.requestNegativeException} onChange={(e) => setForm({ ...form, requestNegativeException: e.target.checked })}/> Solicitar exceção administrativa se o saldo for insuficiente</label>

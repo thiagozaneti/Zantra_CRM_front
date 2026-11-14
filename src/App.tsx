@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
@@ -7,27 +7,28 @@ import { hasPermission } from './components/Layout';
 import { Shield } from 'lucide-react';
 import Login from './pages/Login';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Products from './pages/Products';
-import Locations from './pages/Locations';
-import Entries from './pages/Entries';
-import Transfers from './pages/Transfers';
-import Stock from './pages/Stock';
-import Reports from './pages/Reports';
-import Users from './pages/Users';
-import Audit from './pages/Audit';
-import Consumption from './pages/Consumption';
-import Sales from './pages/Sales';
+import Home from './pages/Home';
 import ErrorBoundary from './components/ErrorBoundary';
-import Supplies from './pages/Supplies';
-import Security from './pages/Security';
-import Pending from './pages/Pending';
-import Closings from './pages/Closings';
-import Inventories from './pages/Inventories';
-import Commands from './pages/Commands';
-import CardRefunds from './pages/CardRefunds';
-import PrinterSettings from './pages/PrinterSettings';
-import Kiosks from './pages/Kiosks';
+
+const Products = lazy(() => import('./pages/Products'));
+const Locations = lazy(() => import('./pages/Locations'));
+const Entries = lazy(() => import('./pages/Entries'));
+const Transfers = lazy(() => import('./pages/Transfers'));
+const Stock = lazy(() => import('./pages/Stock'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Users = lazy(() => import('./pages/Users'));
+const Audit = lazy(() => import('./pages/Audit'));
+const Consumption = lazy(() => import('./pages/Consumption'));
+const Sales = lazy(() => import('./pages/Sales'));
+const Supplies = lazy(() => import('./pages/Supplies'));
+const Security = lazy(() => import('./pages/Security'));
+const Pending = lazy(() => import('./pages/Pending'));
+const Closings = lazy(() => import('./pages/Closings'));
+const Inventories = lazy(() => import('./pages/Inventories'));
+const Commands = lazy(() => import('./pages/Commands'));
+const CardRefunds = lazy(() => import('./pages/CardRefunds'));
+const PrinterSettings = lazy(() => import('./pages/PrinterSettings'));
+const Kiosks = lazy(() => import('./pages/Kiosks'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -56,7 +57,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<Home />} />
         <Route path="products" element={<ProtectedRoute module="products"><Products /></ProtectedRoute>} />
         <Route path="locations" element={<ProtectedRoute module="locations"><Locations /></ProtectedRoute>} />
         <Route path="entries" element={<ProtectedRoute module="entries"><Entries /></ProtectedRoute>} />

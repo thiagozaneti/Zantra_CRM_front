@@ -6,6 +6,16 @@ export class ApiError extends Error {
   constructor(message: string, public status: number, public code?: string) { super(message); this.name = 'ApiError'; }
 }
 
+function readableError(data: any, status: number): { message: string; code?: string } {
+  const nested = data?.error && typeof data.error === 'object' ? data.error : null;
+  const candidate = nested?.message || data?.error;
+  const code = nested?.code || data?.code;
+  if (status >= 500 || typeof candidate !== 'string' || /prisma|sql server|stack trace|exception|invalid payload/i.test(candidate)) {
+    return { message: 'Não foi possível concluir. Tente novamente e, se o problema continuar, procure o responsável pelo sistema.', code };
+  }
+  return { message: candidate, code };
+}
+
 export async function request(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem('zantra_token');
   const headers: any = {
@@ -14,7 +24,12 @@ export async function request(url: string, options: RequestInit = {}) {
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${url}`, { ...options, headers, credentials: 'include' });
+  let res: Response;
+  try { res = await fetch(`${API_BASE}${url}`, { ...options, headers, credentials: 'include' }); }
+  catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error;
+    throw new ApiError('Não foi possível conectar ao sistema. Confira a conexão e tente novamente.', 0);
+  }
 
   if (res.status === 401) {
     // Try refresh
@@ -33,8 +48,8 @@ export async function request(url: string, options: RequestInit = {}) {
         const retryRes = await fetch(`${API_BASE}${url}`, { ...options, headers, credentials: 'include' });
         if (!retryRes.ok) {
           const retryError = await retryRes.json().catch(() => ({ error: 'Erro na requisição' }));
-          const nested = retryError.error && typeof retryError.error === 'object' ? retryError.error : null;
-          throw new ApiError(nested?.message || retryError.error || 'Erro na requisição', retryRes.status, nested?.code || retryError.code);
+          const parsed = readableError(retryError, retryRes.status);
+          throw new ApiError(parsed.message, retryRes.status, parsed.code);
         }
         if (retryRes.status === 204) return null;
         return retryRes.json();
@@ -48,8 +63,8 @@ export async function request(url: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro na requisição' }));
-    const nested = err.error && typeof err.error === 'object' ? err.error : null;
-    throw new ApiError(nested?.message || err.error || 'Erro na requisição', res.status, nested?.code || err.code);
+    const parsed = readableError(err, res.status);
+    throw new ApiError(parsed.message, res.status, parsed.code);
   }
 
   if (res.status === 204) return null;

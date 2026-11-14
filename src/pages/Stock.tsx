@@ -11,6 +11,7 @@ export default function Stock() {
   const [locations, setLocations] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [fLocationId, setFLocationId] = useState('');
   const [fCategory, setFCategory] = useState('');
   const [fProductId, setFProductId] = useState('');
@@ -23,11 +24,13 @@ export default function Stock() {
   const canAdjust = hasActionPermission('stock:adjust');
   const canSetMinimum = hasActionPermission('stock:minima');
   const selectedAdjustmentProduct = products.find((product) => product.id === adjustForm.productId);
-  useEffect(() => { loadStock(); loadRefs(); }, [fLocationId, fCategory, fProductId, atDate]);
+  useEffect(() => { loadStock(); }, [fLocationId, fCategory, fProductId, atDate]);
+  useEffect(() => { loadRefs(); }, []);
 
   const loadStock = async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const params = new URLSearchParams();
       if (fLocationId) params.set('locationId', fLocationId);
       if (fCategory) params.set('category', fCategory);
@@ -35,7 +38,7 @@ export default function Stock() {
       if (atDate) params.set('atDate', atDate);
       const result = await api.getStock(params.toString());
       setStocks(result);
-    } catch (err: any) { console.error(err); }
+    } catch (err: any) { console.error(err); setLoadError('Não foi possível carregar o estoque. Confira a conexão e tente novamente.'); }
     finally { setLoading(false); }
   };
 
@@ -57,7 +60,10 @@ export default function Stock() {
     setSaving(true); setError('');
     try {
       await api.adjustStock(adjustForm);
-      if (canSetMinimum) await api.setStockMinimum({ productId: adjustForm.productId, locationId: adjustForm.locationId, quantity: adjustForm.minStock });
+      if (canSetMinimum) {
+        try { await api.setStockMinimum({ productId: adjustForm.productId, locationId: adjustForm.locationId, quantity: adjustForm.minStock }); }
+        catch { setShowAdjustModal(false); showToast('warning', 'O estoque foi ajustado, mas não foi possível salvar o estoque mínimo. Confira o saldo antes de tentar novamente.'); await loadStock(); return; }
+      }
       showToast('success', 'Estoque ajustado com sucesso!');
       setShowAdjustModal(false); loadStock();
     } catch (err: any) { setError(err.message); showToast('error', err.message); }
@@ -85,6 +91,7 @@ export default function Stock() {
 
   return (
     <div className="space-y-6">
+      {loadError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{loadError} <button className="font-semibold underline" onClick={loadStock}>Tentar novamente</button></div>}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-surface-900">Estoque</h1>
@@ -100,20 +107,20 @@ export default function Stock() {
         <div className="card-body">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-medium text-surface-500 mb-1.5">Local</label>
-              <select value={fLocationId} onChange={(e) => setFLocationId(e.target.value)} className="w-full">
+              <label htmlFor="stock-filter-location" className="block text-xs font-medium text-surface-500 mb-1.5">Local</label>
+              <select id="stock-filter-location" value={fLocationId} onChange={(e) => setFLocationId(e.target.value)} className="w-full">
                 <option value="">Todos</option>
                 {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             </div>
-            <div><label className="block text-xs font-medium text-surface-500 mb-1.5">Posição em</label><input type="date" value={atDate} onChange={(e) => setAtDate(e.target.value)} className="w-full" /></div>
+            <div><label htmlFor="stock-filter-date" className="block text-xs font-medium text-surface-500 mb-1.5">Posição em</label><input id="stock-filter-date" type="date" value={atDate} onChange={(e) => setAtDate(e.target.value)} className="w-full" /></div>
             <div>
-              <label className="block text-xs font-medium text-surface-500 mb-1.5">Categoria</label>
-              <input value={fCategory} onChange={(e) => setFCategory(e.target.value)} placeholder="Filtrar por categoria" className="w-full" />
+              <label htmlFor="stock-filter-category" className="block text-xs font-medium text-surface-500 mb-1.5">Categoria</label>
+              <input id="stock-filter-category" value={fCategory} onChange={(e) => setFCategory(e.target.value)} placeholder="Filtrar por categoria" className="w-full" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-surface-500 mb-1.5">Produto</label>
-              <select value={fProductId} onChange={(e) => setFProductId(e.target.value)} className="w-full">
+              <label htmlFor="stock-filter-product" className="block text-xs font-medium text-surface-500 mb-1.5">Produto</label>
+              <select id="stock-filter-product" value={fProductId} onChange={(e) => setFProductId(e.target.value)} className="w-full">
                 <option value="">Todos</option>
                 {products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
@@ -135,12 +142,12 @@ export default function Stock() {
                 <p className="font-medium text-surface-900">{row.product.name}</p>
                 <p className="text-xs text-surface-500">{row.product.category || 'Sem categoria'}</p>
               </div>
-              <button
+              {canAdjust && !atDate && activeLocations.length > 0 && <button
                 onClick={() => openAdjust(Object.values(row.locations)[0] || { product: row.product, location: activeLocations[0], quantity: 0 })}
                 className="text-xs text-brand-600 font-medium"
               >
                 Ajustar
-              </button>
+              </button>}
             </div>
             <div className="grid grid-cols-2 gap-2">
               {activeLocations.map((l: any) => {
@@ -235,27 +242,27 @@ export default function Stock() {
             <div className="p-4 lg:p-6 space-y-4 overflow-y-auto max-h-[80vh]">
               {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Produto *</label>
-                <select value={adjustForm.productId} onChange={(e) => setAdjustForm({ ...adjustForm, productId: e.target.value })} className="w-full">
+                <label htmlFor="stock-adjust-product" className="block text-sm font-medium text-surface-700 mb-1.5">Produto *</label>
+                <select id="stock-adjust-product" value={adjustForm.productId} onChange={(e) => setAdjustForm({ ...adjustForm, productId: e.target.value })} className="w-full">
                   <option value="">Selecione...</option>
                   {products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Local *</label>
-                <select value={adjustForm.locationId} onChange={(e) => setAdjustForm({ ...adjustForm, locationId: e.target.value })} className="w-full">
+                <label htmlFor="stock-adjust-location" className="block text-sm font-medium text-surface-700 mb-1.5">Local *</label>
+                <select id="stock-adjust-location" value={adjustForm.locationId} onChange={(e) => setAdjustForm({ ...adjustForm, locationId: e.target.value })} className="w-full">
                   <option value="">Selecione...</option>
                   {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Nova Quantidade *</label>
-                <input type="number" min="0" step={quantityStep(selectedAdjustmentProduct?.unit)} value={adjustForm.newQty || ''} onChange={(e) => setAdjustForm({ ...adjustForm, newQty: Number(e.target.value) })} className="w-full" />
+                <label htmlFor="stock-adjust-quantity" className="block text-sm font-medium text-surface-700 mb-1.5">Nova quantidade *</label>
+                <input id="stock-adjust-quantity" type="number" min="0" step={quantityStep(selectedAdjustmentProduct?.unit)} value={adjustForm.newQty ?? ''} onChange={(e) => setAdjustForm({ ...adjustForm, newQty: Number(e.target.value) })} className="w-full" />
               </div>
-              {canSetMinimum && <div><label className="block text-sm font-medium text-surface-700 mb-1.5">Estoque mínimo neste local *</label><input type="number" min="0" step={quantityStep(selectedAdjustmentProduct?.unit)} value={adjustForm.minStock} onChange={(e) => setAdjustForm({ ...adjustForm, minStock: Number(e.target.value) })} className="w-full" /></div>}
+              {canSetMinimum && <div><label htmlFor="stock-adjust-minimum" className="block text-sm font-medium text-surface-700 mb-1.5">Estoque mínimo neste local *</label><input id="stock-adjust-minimum" type="number" min="0" step={quantityStep(selectedAdjustmentProduct?.unit)} value={adjustForm.minStock} onChange={(e) => setAdjustForm({ ...adjustForm, minStock: Number(e.target.value) })} className="w-full" /></div>}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Justificativa * (obrigatória)</label>
-                <textarea value={adjustForm.reason} onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })} className="w-full" rows={3} placeholder="Descreva o motivo do ajuste..." />
+                <label htmlFor="stock-adjust-reason" className="block text-sm font-medium text-surface-700 mb-1.5">Justificativa *</label>
+                <textarea id="stock-adjust-reason" value={adjustForm.reason} onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })} className="w-full" rows={3} placeholder="Descreva o motivo do ajuste..." />
               </div>
             </div>
             <div className="flex gap-3 px-4 lg:px-6 py-4 border-t border-surface-200 bg-surface-50 sticky bottom-0">

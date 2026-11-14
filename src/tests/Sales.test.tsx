@@ -6,7 +6,8 @@ import { receiptRows } from '../lib/saleReceipt';
 
 vi.mock('../lib/api', () => ({ api: { getReferenceLocations: vi.fn(), getSaleProducts: vi.fn(), getSales: vi.fn(), getWorkstationStatus: vi.fn(), createSale: vi.fn(), getPrintJob: vi.fn(), printSale: vi.fn(), reverseSale: vi.fn() } }));
 vi.mock('../components/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
-vi.mock('../components/ConfirmDialog', () => ({ useConfirm: () => ({ prompt: vi.fn() }) }));
+const confirmChange = vi.hoisted(() => vi.fn());
+vi.mock('../components/ConfirmDialog', () => ({ useConfirm: () => ({ prompt: vi.fn(), confirm: confirmChange }) }));
 vi.mock('../components/Layout', () => ({ hasActionPermission: (permission: string) => ['sales:view', 'sales:create', 'sales:reverse'].includes(permission) }));
 vi.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { role: 'ADMINISTRADOR', locations: [{ id: 'bar-1' }] } }) }));
 vi.mock('../components/RFIDCommandPanel', () => ({ default: ({ onSelect, cardInputRef }: any) => <><input aria-label="Número ou leitura da comanda" ref={cardInputRef}/><button onClick={() => onSelect({ comandaId: 'comanda-1', cardCode: '1234', valorTotal: 20, status: 'active' })}>Simular comanda</button></> }));
@@ -17,6 +18,7 @@ const product = { id: 'p1', name: 'Refrigerante', sku: '123', unit: 'un', salePr
 describe('Frente de vendas', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    confirmChange.mockResolvedValue(true);
     vi.mocked(api.getReferenceLocations).mockResolvedValue([{ id: 'bar-1', name: 'Bar', allowsSale: true }]);
     vi.mocked(api.getSaleProducts).mockResolvedValue([product]);
     vi.mocked(api.getSales).mockResolvedValue({ data: [], summary: { completedSales: 0, totalAmount: 0 } });
@@ -132,6 +134,17 @@ describe('Frente de vendas', () => {
     expect(api.createSale).toHaveBeenCalledTimes(1);
     resolve({ number: 2, totalAmount: 5, printWarning: { message: 'Sem impressora' } });
     await waitFor(() => expect(screen.getByText(/Nenhum item na venda/)).toBeTruthy());
+  });
+
+  it('preserva o carrinho se o operador cancelar a troca de local', async () => {
+    confirmChange.mockResolvedValue(false);
+    vi.mocked(api.getReferenceLocations).mockResolvedValue([{ id: 'bar-1', name: 'Bar', allowsSale: true }, { id: 'bar-2', name: 'Outro bar', allowsSale: true }]);
+    render(<Sales/>);
+    fireEvent.click(await screen.findByRole('button', { name: /Refrigerante/ }));
+    fireEvent.change(screen.getByLabelText('Local de venda *'), { target: { value: 'bar-2' } });
+    await waitFor(() => expect(confirmChange).toHaveBeenCalled());
+    expect((screen.getByLabelText('Local de venda *') as HTMLSelectElement).value).toBe('bar-1');
+    expect(screen.getByLabelText('Quantidade de Refrigerante')).toBeTruthy();
   });
 });
 

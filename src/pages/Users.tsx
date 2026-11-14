@@ -197,12 +197,12 @@ export default function Users() {
             <div className="p-4 lg:p-6 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain">
               {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Nome *</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" />
+                <label htmlFor="user-name" className="block text-sm font-medium text-surface-700 mb-1.5">Nome *</label>
+                <input id="user-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Email *</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full" />
+                <label htmlFor="user-email" className="block text-sm font-medium text-surface-700 mb-1.5">E-mail *</label>
+                <input id="user-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full" />
               </div>
               <div>
                 <label htmlFor="user-username" className="block text-sm font-medium text-surface-700 mb-1.5">Nome de usuário (opcional)</label>
@@ -210,12 +210,12 @@ export default function Users() {
                 <p className="text-xs text-surface-500 mt-1.5">De 3 a 64 caracteres: letras sem acento, números, ponto, hífen ou sublinhado.</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">{editing ? 'Nova Senha (deixe vazio para manter)' : 'Senha *'}</label>
-                <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full" />
+                <label htmlFor="user-password" className="block text-sm font-medium text-surface-700 mb-1.5">{editing ? 'Nova senha (deixe vazio para manter)' : 'Senha *'}</label>
+                <input id="user-password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="w-full" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Perfil *</label>
-                <select value={form.role} onChange={(e) => applyTemplate(e.target.value)} className="w-full">
+                <label htmlFor="user-role" className="block text-sm font-medium text-surface-700 mb-1.5">Perfil *</label>
+                <select id="user-role" value={form.role} onChange={(e) => applyTemplate(e.target.value)} className="w-full">
                   {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
               </div>

@@ -16,9 +16,10 @@ async function read(code: string, terminator = true) {
 
 describe('useRFIDReader', () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
   it('preserva zeros e finaliza com Enter', async () => {
+    vi.spyOn(performance, 'now').mockReturnValue(0);
     const onRead = vi.fn(); renderHook(() => useRFIDReader({ onRead }));
     await read('0001234567'); expect(onRead).toHaveBeenCalledWith('0001234567');
   });

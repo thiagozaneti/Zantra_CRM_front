@@ -23,7 +23,7 @@ const money = (value: number | string) => Number(value || 0).toLocaleString('pt-
 export default function Sales() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { prompt } = useConfirm();
+  const { prompt, confirm } = useConfirm();
   const canCreate = hasActionPermission('sales:create');
   const canReverse = hasActionPermission('sales:reverse');
   const canOverridePrice = user?.role === 'ADMINISTRADOR' || user?.role === 'GERENTE';
@@ -257,6 +257,15 @@ export default function Sales() {
     catch (err: any) { showToast('error', err.message); }
   };
 
+  const changeLocation = async (nextLocation: string) => {
+    if (nextLocation === locationId || saving) return;
+    if (cart.length || pendingProduct) {
+      const accepted = await confirm({ title: 'Trocar local de venda?', message: 'Os itens da venda atual serão removidos porque o estoque depende do local escolhido.', confirmText: 'Trocar local', type: 'warning' });
+      if (!accepted) return;
+    }
+    setLocationId(nextLocation);
+  };
+
   return <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto" onKeyDown={(event) => {
     if (salesOpen || saving || event.ctrlKey || event.altKey || event.metaKey || !canCreate) return;
     if (event.key === 'Escape' && pendingProduct) { event.preventDefault(); pendingFocus.current = 'search'; setPendingProduct(null); setError(''); return; }
@@ -294,7 +303,7 @@ export default function Sales() {
     {canCreate && <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:min-h-[410px] xl:grid-cols-[minmax(0,1fr)_290px]">
       <section className="card flex min-h-[380px] flex-col overflow-hidden xl:min-h-0">
         <div className="grid shrink-0 gap-2 border-b border-surface-200 bg-surface-50 p-3 sm:grid-cols-[minmax(170px,0.8fr)_minmax(0,1.5fr)]">
-          <div><label htmlFor="sale-location" className="mb-1 block text-xs font-semibold text-surface-600">Local de venda *</label><select id="sale-location" className="w-full" value={locationId} disabled={user?.role === 'FRENTE_VENDAS' && bars.length === 1} onChange={(e) => setLocationId(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
+          <div><label htmlFor="sale-location" className="mb-1 block text-xs font-semibold text-surface-600">Local de venda *</label><select id="sale-location" className="w-full" value={locationId} disabled={saving || (user?.role === 'FRENTE_VENDAS' && bars.length === 1)} onChange={(e) => void changeLocation(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
           <div><label htmlFor="sale-search" className="mb-1 block text-xs font-semibold text-surface-600">Código ou descrição do produto</label><div className="relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"/><input id="sale-search" ref={searchRef} className="w-full pl-10" value={search} onChange={(e) => { setSearch(e.target.value); setSearchIndex(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); chooseSearchedProduct(); } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); if (filteredProducts.length) setSearchIndex((current) => { if (current === null) return event.key === 'ArrowDown' ? 0 : filteredProducts.length - 1; return event.key === 'ArrowDown' ? Math.min(filteredProducts.length - 1, current + 1) : Math.max(0, current - 1); }); } }} placeholder="Nome, SKU ou código de barras" disabled={!locationId || !!pendingProduct}/></div></div>
         </div>
         <p className="shrink-0 px-3 pt-1.5 text-[11px] text-surface-500">F2 buscar · Setas selecionar · Enter confirmar · Shift+Enter adicionar e buscar outro · F4 pagamento · F6 comanda · Esc cancelar item</p>

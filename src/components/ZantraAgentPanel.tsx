@@ -93,8 +93,8 @@ export default function ZantraAgentPanel() {
         <div className="flex gap-3"><span className="mt-0.5"><CheckCircle2 size={20} className="text-emerald-600"/></span><div><p className="font-medium text-emerald-900">{workstation.terminal.name}</p><p className="text-xs text-emerald-700">{workstation.terminal.locationName} · {workstation.terminal.online ? 'Agent online' : 'Agent offline'} · {workstation.terminal.activePrinterName || 'Impressora não configurada'}</p></div></div>
         <button className="btn-secondary flex items-center gap-2" onClick={() => void unbind()} disabled={busy === 'unbind'}><Unlink size={15}/>Desvincular</button>
       </div> : <div className="mt-4 grid gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 md:grid-cols-[1fr_1fr_auto]">
-        <input value={bindingCode} onChange={(event) => setBindingCode(event.target.value.toUpperCase())} placeholder="Código exibido pelo Agent" maxLength={30}/>
-        <input value={stationLabel} onChange={(event) => setStationLabel(event.target.value)} placeholder="Nome desta estação (opcional)" maxLength={200}/>
+        <label className="block text-sm">Código exibido pelo Agent<input className="mt-1 w-full" value={bindingCode} onChange={(event) => setBindingCode(event.target.value.toUpperCase())} placeholder="Código exibido pelo Agent" maxLength={30}/></label>
+        <label className="block text-sm">Nome desta estação (opcional)<input className="mt-1 w-full" value={stationLabel} onChange={(event) => setStationLabel(event.target.value)} placeholder="Nome desta estação" maxLength={200}/></label>
         <button className="btn-primary" onClick={() => void bind()} disabled={busy === 'bind' || bindingCode.trim().length < 6}>Vincular navegador</button>
       </div>}
     </section>
@@ -102,8 +102,8 @@ export default function ZantraAgentPanel() {
     {canManage && <section className="rounded-xl border border-surface-200 bg-white p-4 lg:p-5">
       <div><h2 className="font-semibold">Parear um novo Agent</h2><p className="mt-1 text-xs text-surface-500">Gere o código uma vez e informe-o na instalação do computador correspondente.</p></div>
       <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-center">
-        <input value={pairing.terminalName} onChange={(event) => setPairing({ ...pairing, terminalName: event.target.value })} placeholder="Ex.: Caixa Bocha 01" maxLength={200}/>
-        <select value={pairing.locationId} onChange={(event) => setPairing({ ...pairing, locationId: event.target.value })}><option value="">Selecione o local</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select>
+        <label className="block text-sm">Nome do terminal<input className="mt-1 w-full" value={pairing.terminalName} onChange={(event) => setPairing({ ...pairing, terminalName: event.target.value })} placeholder="Ex.: Caixa Bocha 01" maxLength={200}/></label>
+        <label className="block text-sm">Local<select className="mt-1 w-full" value={pairing.locationId} onChange={(event) => setPairing({ ...pairing, locationId: event.target.value })}><option value="">Selecione o local</option>{locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={pairing.defaultForLocation} onChange={(event) => setPairing({ ...pairing, defaultForLocation: event.target.checked })}/>Padrão do local</label>
         <button className="btn-primary" onClick={() => void generatePairing()} disabled={busy === 'pairing'}>Gerar código</button>
       </div>

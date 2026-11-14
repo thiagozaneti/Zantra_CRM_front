@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { hasActionPermission } from '../components/Layout';
@@ -18,6 +18,11 @@ export default function Supplies() {
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ sourceId: '', destinationId: '', notes: '', items: [] as any[] });
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [savingRequest, setSavingRequest] = useState(false);
+  const saving = useRef(false);
+  const acting = useRef(false);
   const canCreate = hasActionPermission('supplies:create');
   const canManage = hasActionPermission('supplies:manage');
   const { showToast } = useToast();
@@ -25,14 +30,20 @@ export default function Supplies() {
   const userLocationIds = user?.locations?.map((location) => location.id) || (user?.assignedLocationId ? [user.assignedLocationId] : []);
   const manager = user?.role === 'ADMINISTRADOR' || user?.role === 'GERENTE';
 
-  const load = async () => { try { const result = await api.getSupplyRequests(); setRequests(result.data); } catch (err: any) { showToast('error', err.message); } };
-  useEffect(() => { load(); Promise.all([api.getReferenceLocations(), api.getReferenceProducts()]).then(([locs, prods]) => { setLocations(locs); setProducts(prods); }); }, []);
+  const load = async () => { try { setLoading(true); setLoadError(''); const result = await api.getSupplyRequests(); setRequests(result.data); } catch { setLoadError('Não foi possível carregar as solicitações. Tente novamente.'); } finally { setLoading(false); } };
+  useEffect(() => { load(); Promise.all([api.getReferenceLocations(), api.getReferenceProducts()]).then(([locs, prods]) => { setLocations(locs); setProducts(prods); }).catch(() => showToast('error', 'Não foi possível carregar os locais e produtos. Atualize a página para tentar novamente.')); }, []);
   const addItem = () => setForm({ ...form, items: [...form.items, { productId: '', quantity: 1 }] });
   const save = async () => {
+    if (saving.current) return;
     if (!form.sourceId || !form.destinationId) return setError('Selecione de qual local está solicitando e para qual local será enviado');
-    try { await api.createSupplyRequest(form); setShowModal(false); showToast('success', 'Solicitação enviada ao local responsável'); load(); } catch (err: any) { setError(err.message); }
+    saving.current = true;
+    setSavingRequest(true);
+    try { await api.createSupplyRequest(form); setShowModal(false); showToast('success', 'Solicitação enviada ao local responsável'); load(); } catch (err: any) { setError(err.message); } finally { saving.current = false; setSavingRequest(false); }
   };
   const act = async (request: any, action: string) => {
+    if (acting.current) return;
+    acting.current = true;
+    try {
     let message: string | undefined;
     if (action === 'reject') {
       message = await prompt({ title: `Recusar solicitação #${request.number}`, message: 'Informe por que o local não poderá atender. A justificativa será enviada ao solicitante.', label: 'Motivo da recusa', placeholder: 'Ex.: item sem saldo, quantidade indisponível ou previsão de reposição', confirmText: 'Recusar solicitação', type: 'danger' }) || undefined;
@@ -43,6 +54,7 @@ export default function Supplies() {
       if (!ok) return;
     }
     try { await api.updateSupplyRequest(request.id, action, message); showToast('success', action === 'reject' ? 'Solicitação recusada e solicitante avisado' : 'Solicitação atualizada'); load(); } catch (err: any) { showToast('error', err.message); }
+    } finally { acting.current = false; }
   };
 
   return <div className="space-y-5">
@@ -59,7 +71,9 @@ export default function Supplies() {
         <div className="mt-4 flex flex-wrap gap-2">{request.source && request.status === 'SOLICITADA' && sourceResponsible && <><button className="btn-primary" onClick={() => act(request, 'accept')}>Aceitar e separar</button><button className="btn-secondary text-red-600" onClick={() => act(request, 'reject')}>Recusar / sem estoque</button></>}{request.status === 'SOLICITADA' && (requester || manager) && <button className="btn-secondary" onClick={() => act(request, 'cancel')}>Cancelar pedido</button>}{request.status === 'EM_PREPARACAO' && sourceResponsible && <button className="btn-primary" onClick={() => act(request, 'send')}>Confirmar envio</button>}{request.status === 'ENVIADA' && destinationResponsible && <button className="btn-primary" onClick={() => act(request, 'receive')}>Confirmar recebimento</button>}</div>
       </div>;
     })}</div>
-    {!requests.length && <div className="rounded-xl border border-dashed bg-white py-12 text-center text-surface-500">Nenhuma solicitação de abastecimento encontrada.</div>}
-    {showModal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-lg rounded-xl bg-white shadow-xl"><div className="flex justify-between border-b p-4"><h2 className="font-semibold">Nova solicitação</h2><button onClick={() => setShowModal(false)}><X size={19}/></button></div><div className="max-h-[70vh] space-y-4 overflow-auto p-5">{error && <p className="rounded bg-red-50 p-3 text-sm text-red-600">{error}</p>}<div className="grid sm:grid-cols-2 gap-3"><div><label className="text-sm">Solicitar de *</label><select className="mt-1 w-full" value={form.sourceId} onChange={(e) => setForm({ ...form, sourceId: e.target.value })}><option value="">Selecione a origem...</option>{locations.filter((location) => location.allowsTransferOrigin && location.id !== form.destinationId).map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></div><div><label className="text-sm">Entregar em *</label><select className="mt-1 w-full" value={form.destinationId} onChange={(e) => setForm({ ...form, destinationId: e.target.value })}><option value="">Selecione o destino...</option>{locations.filter((location) => location.allowsTransferDestination && location.id !== form.sourceId).map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></div></div>{form.items.map((item, index) => { const product = products.find((row) => row.id === item.productId); return <div key={index} className="grid grid-cols-[1fr_110px_32px] gap-2"><select value={item.productId} onChange={(e) => setForm({ ...form, items: form.items.map((row, i) => i === index ? { ...row, productId: e.target.value } : row) })}><option value="">Produto...</option>{products.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select><input type="number" min={quantityStep(product?.unit)} step={quantityStep(product?.unit)} value={item.quantity} onChange={(e) => setForm({ ...form, items: form.items.map((row, i) => i === index ? { ...row, quantity: Number(e.target.value) } : row) })}/><button onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== index) })}><X size={16}/></button></div>})}<button className="text-sm text-brand-600" onClick={addItem}>+ Adicionar produto</button><textarea className="w-full" rows={2} placeholder="Observações ou urgência do pedido" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}/></div><div className="flex justify-end gap-2 border-t p-4"><button className="btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button><button className="btn-primary" onClick={save}>Enviar solicitação</button></div></div></div>}
+    {loadError && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{loadError} <button className="font-semibold underline" onClick={load}>Tentar novamente</button></div>}
+    {loading && <p className="text-sm text-surface-600">Carregando solicitações...</p>}
+    {!loading && !loadError && !requests.length && <div className="rounded-xl border border-dashed bg-white py-12 text-center text-surface-500">Nenhuma solicitação de abastecimento encontrada.</div>}
+    {showModal && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="w-full max-w-lg rounded-xl bg-white shadow-xl"><div className="flex justify-between border-b p-4"><h2 className="font-semibold">Nova solicitação</h2><button onClick={() => setShowModal(false)}><X size={19}/></button></div><div className="max-h-[70vh] space-y-4 overflow-auto p-5">{error && <p className="rounded bg-red-50 p-3 text-sm text-red-600">{error}</p>}<div className="grid sm:grid-cols-2 gap-3"><div><label htmlFor="supplies-field-1" className="text-sm">Solicitar de *</label><select id="supplies-field-1" className="mt-1 w-full" value={form.sourceId} onChange={(e) => setForm({ ...form, sourceId: e.target.value })}><option value="">Selecione a origem...</option>{locations.filter((location) => location.allowsTransferOrigin && location.id !== form.destinationId).map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></div><div><label htmlFor="supplies-field-2" className="text-sm">Entregar em *</label><select id="supplies-field-2" className="mt-1 w-full" value={form.destinationId} onChange={(e) => setForm({ ...form, destinationId: e.target.value })}><option value="">Selecione o destino...</option>{locations.filter((location) => location.allowsTransferDestination && location.id !== form.sourceId).map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></div></div>{form.items.map((item, index) => { const product = products.find((row) => row.id === item.productId); return <div key={index} className="grid grid-cols-[1fr_110px_32px] gap-2"><select aria-label={`Produto ${index + 1}`} value={item.productId} onChange={(e) => setForm({ ...form, items: form.items.map((row, i) => i === index ? { ...row, productId: e.target.value } : row) })}><option value="">Produto...</option>{products.map((row) => <option key={row.id} value={row.id}>{row.name}</option>)}</select><input aria-label={`Quantidade do produto ${index + 1}`} type="number" min={quantityStep(product?.unit)} step={quantityStep(product?.unit)} value={item.quantity} onChange={(e) => setForm({ ...form, items: form.items.map((row, i) => i === index ? { ...row, quantity: Number(e.target.value) } : row) })}/><button aria-label={`Remover produto ${index + 1}`} onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== index) })}><X size={16}/></button></div>})}<button className="text-sm text-brand-600" onClick={addItem}>+ Adicionar produto</button><textarea aria-label="Observações ou urgência do pedido" className="w-full" rows={2} placeholder="Observações ou urgência do pedido" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}/></div><div className="flex justify-end gap-2 border-t p-4"><button className="btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button><button className="btn-primary disabled:opacity-50" disabled={savingRequest} onClick={save}>{savingRequest ? 'Enviando...' : 'Enviar solicitação'}</button></div></div></div>}
   </div>;
 }

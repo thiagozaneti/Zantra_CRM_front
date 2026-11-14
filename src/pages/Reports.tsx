@@ -27,6 +27,8 @@ export default function Reports() {
   const [selectedReport, setSelectedReport] = useState('entries');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [reportError, setReportError] = useState('');
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -56,6 +58,7 @@ export default function Reports() {
   const loadReport = async () => {
     try {
       setLoading(true);
+      setReportError('');
       const params = new URLSearchParams();
       if (startDate) params.set('startDate', startDate);
       if (endDate) params.set('endDate', endDate);
@@ -67,7 +70,8 @@ export default function Reports() {
 
       const result = await api.getReport(selectedReport, params.toString());
       setData(Array.isArray(result) ? result : []);
-    } catch (err: any) { console.error(err); setData([]); }
+      setHasLoaded(true);
+    } catch (err: any) { console.error(err); setData([]); setReportError('Não foi possível carregar o relatório. Confira os filtros e tente novamente.'); }
     finally { setLoading(false); }
   };
 
@@ -191,7 +195,7 @@ export default function Reports() {
       return (
         <div className="text-center py-12">
           <FileText size={48} className="mx-auto text-surface-300 mb-4" />
-          <p className="text-surface-500">Nenhum dado encontrado. Clique em "Carregar" para buscar.</p>
+          <p className="text-surface-600">{hasLoaded ? 'Nenhum registro encontrado para os filtros selecionados.' : 'Escolha os filtros e selecione “Carregar relatório”.'}</p>
         </div>
       );
     }
@@ -235,7 +239,9 @@ export default function Reports() {
         {reportTypes.map((r) => (
           <button
             key={r.id}
-            onClick={() => { setSelectedReport(r.id); setData([]); }}
+            onClick={() => { setSelectedReport(r.id); setData([]); setReportError(''); setHasLoaded(false); }}
+            disabled={loading}
+            aria-pressed={selectedReport === r.id}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               selectedReport === r.id
                 ? 'bg-brand-600 text-white'
@@ -252,17 +258,17 @@ export default function Reports() {
         <div className="card-body">
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
             <div>
-              <label className="block text-xs font-medium text-surface-500 mb-1.5">Data Início</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full" />
+              <label htmlFor="report-start" className="block text-xs font-medium text-surface-500 mb-1.5">Data inicial</label>
+              <input id="report-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-surface-500 mb-1.5">Data Fim</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full" />
+              <label htmlFor="report-end" className="block text-xs font-medium text-surface-500 mb-1.5">Data final</label>
+              <input id="report-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full" />
             </div>
             {(selectedReport === 'entries' || selectedReport === 'product-history' || selectedReport === 'stock' || selectedReport === 'consumption' || selectedReport === 'sales') && (
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Produto</label>
-                <select value={productId} onChange={(e) => setProductId(e.target.value)} className="w-full">
+                <label htmlFor="report-product" className="block text-xs font-medium text-surface-500 mb-1.5">Produto</label>
+                <select id="report-product" value={productId} onChange={(e) => setProductId(e.target.value)} className="w-full">
                   <option value="">Todos</option>
                   {products.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
@@ -270,8 +276,8 @@ export default function Reports() {
             )}
             {(selectedReport === 'entries' || selectedReport === 'stock' || selectedReport === 'adjustments' || selectedReport === 'consumption' || selectedReport === 'sales') && (
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Local</label>
-                <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className="w-full">
+                <label htmlFor="report-location" className="block text-xs font-medium text-surface-500 mb-1.5">Local</label>
+                <select id="report-location" value={locationId} onChange={(e) => setLocationId(e.target.value)} className="w-full">
                   <option value="">Todos</option>
                   {locations.map((l: any) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
@@ -279,8 +285,8 @@ export default function Reports() {
             )}
             {(selectedReport === 'employee-movements' || selectedReport === 'adjustments' || selectedReport === 'sales' || selectedReport === 'command-recharges' || selectedReport === 'card-refunds') && (
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Funcionário</label>
-                <select value={userId} onChange={(e) => setUserId(e.target.value)} className="w-full">
+                <label htmlFor="report-user" className="block text-xs font-medium text-surface-500 mb-1.5">Funcionário</label>
+                <select id="report-user" value={userId} onChange={(e) => setUserId(e.target.value)} className="w-full">
                   <option value="">Todos</option>
                   {users.map((u: any) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
@@ -288,8 +294,8 @@ export default function Reports() {
             )}
             {(selectedReport === 'command-recharges' || selectedReport === 'card-refunds') && (
               <div>
-                <label className="block text-xs font-medium text-surface-500 mb-1.5">Forma de pagamento</label>
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full">
+                <label htmlFor="report-payment" className="block text-xs font-medium text-surface-500 mb-1.5">Forma de pagamento</label>
+                <select id="report-payment" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full">
                   <option value="">Todas</option>
                   {Object.entries(rechargePaymentMethods).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
@@ -301,6 +307,7 @@ export default function Reports() {
               <FileText size={16} />
               {loading ? 'Carregando...' : 'Carregar Relatório'}
             </button>
+            <button className="btn-secondary" disabled={loading} onClick={() => { setStartDate(''); setEndDate(''); setProductId(''); setLocationId(''); setUserId(''); setPaymentMethod(''); setData([]); setReportError(''); setHasLoaded(false); }}>Limpar filtros</button>
             {canExport && data.length > 0 && (
               <>
                 <button onClick={exportPDF} className="btn-secondary flex items-center gap-2">
@@ -317,6 +324,8 @@ export default function Reports() {
         </div>
       </div>
 
+      {reportError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{reportError}</p>}
+      {hasLoaded && !loading && !reportError && <p className="text-sm text-surface-600">Resultado da última consulta. Se alterar os filtros, carregue o relatório novamente.</p>}
       {/* Results */}
       {selectedReport === 'command-recharges' && data.length > 0 && <div className="grid gap-3 sm:grid-cols-2">
         <div className="card p-4"><p className="text-xs font-medium text-surface-500">Recargas encontradas</p><p className="mt-1 text-2xl font-semibold text-surface-900">{data.length}</p></div>

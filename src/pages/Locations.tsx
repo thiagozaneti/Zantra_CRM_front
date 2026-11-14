@@ -15,6 +15,7 @@ export default function Locations() {
   const { confirm } = useConfirm();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -28,12 +29,13 @@ export default function Locations() {
   const loadLocations = async () => {
     try {
       setLoading(true);
+      setLoadError(false);
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (typeFilter) params.set('type', typeFilter);
       const result = await api.getLocations(params.toString());
       setLocations(result);
-    } catch (err: any) { setError(err.message); }
+    } catch { setLoadError(true); }
     finally { setLoading(false); }
   };
 
@@ -74,6 +76,7 @@ export default function Locations() {
 
   return (
     <div className="space-y-4 lg:space-y-6">
+      {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar os locais. <button className="font-semibold underline" onClick={loadLocations}>Tentar novamente</button></p>}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-surface-900">Locais</h1>
@@ -101,7 +104,7 @@ export default function Locations() {
         {loading ? (
           <div className="col-span-full text-center py-12 text-surface-400">Carregando...</div>
         ) : locations.length === 0 ? (
-          <div className="col-span-full text-center py-12 text-surface-400">Nenhum local encontrado</div>
+          <div className="col-span-full text-center py-12 text-surface-600">{loadError ? 'Locais indisponíveis no momento.' : 'Nenhum local encontrado para esta busca.'}</div>
         ) : locations.map((l, index) => (
           <div key={l.id} className="card p-4 lg:p-5 hover:shadow-md transition-all duration-300 slide-up" style={{ animationDelay: `${index * 0.05}s` }}>
             <div className="flex items-start justify-between mb-3">
@@ -141,17 +144,17 @@ export default function Locations() {
           <div className="bg-white w-full lg:max-w-md lg:rounded-2xl max-h-[95vh] lg:max-h-[90vh] overflow-hidden shadow-xl scale-in rounded-t-2xl lg:rounded-2xl">
             <div className="flex justify-between items-center px-6 py-4 border-b border-surface-200">
               <h2 className="text-lg font-semibold text-surface-900">{editing ? 'Editar Local' : 'Novo Local'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-surface-400 hover:text-surface-600 p-1"><X size={20} /></button>
+              <button aria-label="Fechar cadastro de local" onClick={() => setShowModal(false)} className="text-surface-400 hover:text-surface-600 p-1"><X size={20} /></button>
             </div>
             <div className="p-4 lg:p-6 space-y-4 overflow-y-auto max-h-[80vh]">
               {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>}
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Nome *</label>
-                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" />
+                <label htmlFor="location-name" className="block text-sm font-medium text-surface-700 mb-1.5">Nome *</label>
+                <input id="location-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Tipo *</label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full">
+                <label htmlFor="location-type" className="block text-sm font-medium text-surface-700 mb-1.5">Tipo *</label>
+                <select id="location-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="w-full">
                   <option value="CAMARA_FRIA">Câmara Fria</option>
                   <option value="BAR">Bar</option>
                   <option value="COZINHA">Cozinha</option><option value="ARMAZEM">Almoxarifado</option><option value="PRODUCAO">Produção</option><option value="OUTRO">Outro</option>
@@ -165,8 +168,8 @@ export default function Locations() {
                 ].map(([key, label]) => <label key={key} className="flex items-center gap-3 text-sm text-surface-600"><input type="checkbox" checked={(form as any)[key]} onChange={(e) => setForm({ ...form, [key]: e.target.checked })}/>{label}</label>)}
               </div>
               <div>
-                <label className="block text-sm font-medium text-surface-700 mb-1.5">Descrição</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full" rows={2} />
+                <label htmlFor="location-description" className="block text-sm font-medium text-surface-700 mb-1.5">Descrição</label>
+                <textarea id="location-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full" rows={2} />
               </div>
             </div>
             <div className="flex gap-3 px-4 lg:px-6 py-4 border-t border-surface-200 bg-surface-50 sticky bottom-0">
