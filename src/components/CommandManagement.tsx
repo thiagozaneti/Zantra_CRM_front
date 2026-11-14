@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import { useToast } from './Toast';
 
 const statusLabels: Record<string, string> = { ATIVA: 'Ativa', BLOQUEADA: 'Bloqueada', ENCERRADA: 'Encerrada' };
-const movementLabels: Record<string, string> = { RECARGA: 'Recarga', AJUSTE: 'Ajuste', ZERAGEM: 'Zeragem', CONSUMO: 'Consumo', ESTORNO: 'Estorno' };
+const movementLabels: Record<string, string> = { RECARGA: 'Recarga', AJUSTE: 'Ajuste', ZERAGEM: 'Zeragem', CONSUMO: 'Consumo', ESTORNO: 'Estorno de venda', DEVOLUCAO: 'Devolução de saldo' };
 const paymentMethodLabels: Record<string, string> = { PIX: 'PIX', DINHEIRO: 'Dinheiro', CARTAO_DEBITO: 'Cartão de débito', CARTAO_CREDITO: 'Cartão de crédito', CHEQUE: 'Cheque' };
 const paymentMethods = Object.entries(paymentMethodLabels);
 const money = (value: number | string) => Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

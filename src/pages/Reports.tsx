@@ -16,6 +16,7 @@ const reportTypes = [
   { id: 'consumption', label: 'Consumo Interno' },
   { id: 'sales', label: 'Vendas' },
   { id: 'command-recharges', label: 'Recargas de comandas' },
+  { id: 'card-refunds', label: 'Estornos de saldo' },
   { id: 'inventories', label: 'Inventários físicos' },
 ];
 
@@ -61,7 +62,7 @@ export default function Reports() {
       if (productId) params.set('productId', productId);
       if (locationId) params.set('locationId', locationId);
       if (userId) params.set('userId', userId);
-      if (selectedReport === 'command-recharges' && paymentMethod) params.set('paymentMethod', paymentMethod);
+      if (['command-recharges', 'card-refunds'].includes(selectedReport) && paymentMethod) params.set('paymentMethod', paymentMethod);
       if (selectedReport === 'employee-movements') params.set('userId', userId);
 
       const result = await api.getReport(selectedReport, params.toString());
@@ -77,6 +78,7 @@ export default function Reports() {
       case 'consumption': return ['Data', 'Local', 'Tipo', 'Produto', 'Qtd', 'Unidade', 'Responsável', 'Motivo', 'Situação'];
       case 'sales': return ['Número', 'Data', 'Bar', 'Operador', 'Pagamento', 'Subtotal', 'Desconto', 'Total', 'Situação'];
       case 'command-recharges': return ['Data', 'Comanda', 'Responsável', 'Pagamento', 'Valor carregado', 'Saldo anterior', 'Saldo após', 'Motivo'];
+      case 'card-refunds': return ['Data', 'Cartão', 'Operador', 'Forma de devolução', 'Valor devolvido', 'Saldo anterior', 'Saldo após', 'Motivo'];
       case 'stock': return ['Produto', 'SKU', 'Categoria', 'Local', 'Tipo', 'Qtd', 'Mín', 'Unidade'];
       case 'inventories': return ['Inventário', 'Data', 'Local', 'Produto', 'Esperado', 'Contado', 'Diferença', 'Impacto estimado', 'Situação'];
       case 'product-history':
@@ -118,6 +120,8 @@ export default function Reports() {
           return [`#${item.number}`, new Date(item.createdAt).toLocaleString('pt-BR'), item.location?.name || '', item.registeredBy?.name || '', item.paymentMethod, Number(item.subtotal).toFixed(2), Number(item.discount).toFixed(2), Number(item.totalAmount).toFixed(2), item.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'];
         case 'command-recharges':
           return [new Date(item.createdAt).toLocaleString('pt-BR'), item.command?.cardCode || '', item.user?.name || '', rechargePaymentMethods[item.paymentMethod] || item.paymentMethod || 'Não informado', Number(item.movedValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.previousValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.newValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), item.reason || ''];
+        case 'card-refunds':
+          return [new Date(item.createdAt).toLocaleString('pt-BR'), item.command?.cardCode || '', item.user?.name || '', rechargePaymentMethods[item.paymentMethod] || item.paymentMethod || 'Não informado', Math.abs(Number(item.movedValue)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.previousValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.newValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), item.reason || ''];
         case 'stock':
           return [
             item.product?.name || '',
@@ -273,7 +277,7 @@ export default function Reports() {
                 </select>
               </div>
             )}
-            {(selectedReport === 'employee-movements' || selectedReport === 'adjustments' || selectedReport === 'sales' || selectedReport === 'command-recharges') && (
+            {(selectedReport === 'employee-movements' || selectedReport === 'adjustments' || selectedReport === 'sales' || selectedReport === 'command-recharges' || selectedReport === 'card-refunds') && (
               <div>
                 <label className="block text-xs font-medium text-surface-500 mb-1.5">Funcionário</label>
                 <select value={userId} onChange={(e) => setUserId(e.target.value)} className="w-full">
@@ -282,7 +286,7 @@ export default function Reports() {
                 </select>
               </div>
             )}
-            {selectedReport === 'command-recharges' && (
+            {(selectedReport === 'command-recharges' || selectedReport === 'card-refunds') && (
               <div>
                 <label className="block text-xs font-medium text-surface-500 mb-1.5">Forma de pagamento</label>
                 <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="w-full">

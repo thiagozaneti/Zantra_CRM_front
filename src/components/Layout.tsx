@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Package, MapPin, ArrowDownToLine, ArrowLeftRight,
   Warehouse, FileText, Users, Shield, LogOut, Menu, GlassWater, ShoppingCart,
-  PanelLeftClose, PanelLeftOpen, PackagePlus, KeyRound, Bell, ClipboardList, CalendarCheck, ClipboardCheck, CreditCard, Printer
+  PanelLeftClose, PanelLeftOpen, PackagePlus, KeyRound, Bell, ClipboardList, CalendarCheck, ClipboardCheck, CreditCard, Printer, CircleDollarSign
 } from 'lucide-react';
 import icon from '../images/icon.png';
 import rioDasPedrasLogo from '../images/LOGO-ACQUA-PARK-TOPO-SITE-300X300-1.png';
@@ -20,6 +20,7 @@ const modulePermissions: Record<string, string> = {
   closing: 'closing:view',
   inventory: 'inventory:view',
   commands: 'commands:view',
+  'card-refunds': 'card-refunds:view',
   printer: 'printer:view',
   kiosks: 'kiosks:view',
 };
@@ -36,6 +37,7 @@ const navItems = [
   { to: '/consumption', icon: GlassWater, label: 'Consumo Interno', module: 'consumption', group: 'Movimentações' },
   { to: '/sales', icon: ShoppingCart, label: 'Frente de Vendas', module: 'sales', group: 'Movimentações' },
   { to: '/commands', icon: CreditCard, label: 'Comandas', module: 'commands', group: 'Movimentações' },
+  { to: '/card-refunds', icon: CircleDollarSign, label: 'Estorno de saldo', module: 'card-refunds', group: 'Movimentações' },
   { to: '/pending', icon: ClipboardList, label: 'Pendências', module: 'pending', group: 'Controle' },
   { to: '/closings', icon: CalendarCheck, label: 'Fechamentos', module: 'closing', group: 'Controle' },
   { to: '/reports', icon: FileText, label: 'Relatórios', module: 'reports', group: 'Controle' },

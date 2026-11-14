@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, FileDown, History, Link2, Minus, Plus, Printer, RotateCcw, Search, ShoppingCart, Trash2, Wifi, WifiOff, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { hasActionPermission } from '../components/Layout';
-import { quantityStep } from '../lib/quantity';
+import { isDiscreteUnit, quantityStep } from '../lib/quantity';
 import { useConfirm } from '../components/ConfirmDialog';
 import RFIDCommandPanel, { IdentifiedCommand } from '../components/RFIDCommandPanel';
 import { createUuid } from '../lib/uuid';
@@ -47,12 +47,41 @@ export default function Sales() {
   const [bindingCode, setBindingCode] = useState('');
   const [binding, setBinding] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+  const [pendingQuantity, setPendingQuantity] = useState('1');
+  const [searchIndex, setSearchIndex] = useState<number | null>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const quantityRef = useRef<HTMLInputElement>(null);
+  const paymentRef = useRef<HTMLSelectElement>(null);
+  const cardInputRef = useRef<HTMLInputElement>(null);
+  const finishRef = useRef<HTMLButtonElement>(null);
+  const waitingForCard = useRef(false);
+  const savingRef = useRef(false);
+  const pendingFocus = useRef<'search' | 'payment' | 'finish' | null>(null);
 
   const selectCommand = (command: IdentifiedCommand | null) => {
     setSelectedCommand(command);
     setPaymentMethod(command ? 'COMANDA' : 'PIX');
     setOperationStatus(command ? 'Comanda identificada e pronta para consumo' : '');
   };
+
+  useEffect(() => {
+    if (!selectedCommand || !waitingForCard.current) return;
+    waitingForCard.current = false;
+    if (cart.length && !pendingProduct && !salesOpen) finishRef.current?.focus();
+  }, [selectedCommand, cart.length, pendingProduct, salesOpen]);
+
+  useEffect(() => {
+    if (pendingProduct) { quantityRef.current?.focus(); quantityRef.current?.select(); }
+  }, [pendingProduct]);
+
+  useEffect(() => {
+    if (pendingProduct || !pendingFocus.current) return;
+    if (pendingFocus.current === 'search') searchRef.current?.focus();
+    if (pendingFocus.current === 'payment') paymentRef.current?.focus();
+    if (pendingFocus.current === 'finish') finishRef.current?.focus();
+    pendingFocus.current = null;
+  }, [cart, pendingProduct]);
 
   const loadSales = async () => {
     try {
@@ -106,7 +135,7 @@ export default function Sales() {
   useEffect(() => { void loadWorkstation(); const timer = setInterval(() => void loadWorkstation(), 30_000); return () => clearInterval(timer); }, []);
 
   useEffect(() => {
-    setCart([]); setProducts([]);
+    setCart([]); setProducts([]); setPendingProduct(null); setSearchIndex(null);
     if (locationId) api.getSaleProducts(locationId).then(setProducts).catch((err: any) => setError(err.message));
     loadSales();
   }, [locationId]);
@@ -123,13 +152,60 @@ export default function Sales() {
   const quantityInCart = (productId: string) => cart.find((item) => item.id === productId)?.quantity || 0;
   const printerReady = Boolean(workstation.bound && workstation.terminal?.online && workstation.terminal?.printerAvailable && workstation.terminal?.activePrinterName && (!locationId || workstation.terminal.locationId === locationId));
 
+  const beginProduct = (product: Product) => {
+    if (product.salePrice === null) { setError(`Cadastre o preço de venda de ${product.name}`); return; }
+    const remaining = Number((product.availableQuantity - quantityInCart(product.id)).toFixed(3));
+    if (remaining <= 0) { setError(`Não há mais estoque disponível de ${product.name} neste local`); return; }
+    setError(''); setSearchIndex(null);
+    setPendingProduct(product);
+    setPendingQuantity(String(Math.min(1, remaining)));
+  };
+
+  const chooseSearchedProduct = () => {
+    const term = search.trim().toLocaleLowerCase('pt-BR');
+    if (!term) { setError('Informe o código ou nome do produto.'); return; }
+    const exact = filteredProducts.filter((product) => [product.sku, product.barcode, product.name].some((value) => value?.toLocaleLowerCase('pt-BR') === term));
+    let product: Product | undefined;
+    if (searchIndex !== null) product = filteredProducts[searchIndex];
+    else if (exact.length === 1) product = exact[0];
+    else if (!exact.length && filteredProducts.length === 1) product = filteredProducts[0];
+    if (!product) {
+      setError(filteredProducts.length ? 'Há mais de um resultado. Escolha com as setas e pressione Enter.' : 'Nenhum produto encontrado neste local.');
+      return;
+    }
+    beginProduct(product);
+  };
+
+  const confirmPendingProduct = (returnToSearch = false) => {
+    if (!pendingProduct) return;
+    const quantity = Number(pendingQuantity.replace(',', '.'));
+    const remaining = Number((pendingProduct.availableQuantity - quantityInCart(pendingProduct.id)).toFixed(3));
+    if (!Number.isFinite(quantity) || quantity <= 0 || (isDiscreteUnit(pendingProduct.unit) && !Number.isInteger(quantity)) || Math.abs(quantity * 1000 - Math.round(quantity * 1000)) > 1e-7) {
+      setError(isDiscreteUnit(pendingProduct.unit) ? 'Informe uma quantidade inteira maior que zero.' : 'Informe uma quantidade maior que zero com até três casas decimais.');
+      return;
+    }
+    if (quantity > remaining) { setError(`Estoque insuficiente. Disponível: ${remaining.toLocaleString('pt-BR')} ${pendingProduct.unit}.`); return; }
+    const product = pendingProduct;
+    setCart((current) => {
+      const existing = current.find((item) => item.id === product.id);
+      if (existing) return current.map((item) => item.id === product.id ? { ...item, quantity: Number((item.quantity + quantity).toFixed(3)) } : item);
+      return [...current, { ...product, quantity, unitPrice: Number(product.salePrice) }];
+    });
+    if (returnToSearch) pendingFocus.current = 'search';
+    else if (selectedCommand) pendingFocus.current = 'finish';
+    else pendingFocus.current = 'payment';
+    setPendingProduct(null); setSearch(''); setSearchIndex(null); setError('');
+  };
+
   const addProduct = (product: Product) => {
     if (product.salePrice === null) return setError(`Cadastre o preço de venda de ${product.name}`);
+    const available = Number((product.availableQuantity - quantityInCart(product.id)).toFixed(3));
+    if (available <= 0) return setError(`Não há mais estoque disponível de ${product.name} neste local`);
     setError('');
     setCart((current) => {
       const existing = current.find((item) => item.id === product.id);
-      if (existing) return current.map((item) => item.id === product.id ? { ...item, quantity: Math.min(item.availableQuantity, item.quantity + 1) } : item);
-      return [...current, { ...product, quantity: 1, unitPrice: Number(product.salePrice) }];
+      if (existing) return current.map((item) => item.id === product.id ? { ...item, quantity: Number(Math.min(item.availableQuantity, item.quantity + 1).toFixed(3)) } : item);
+      return [...current, { ...product, quantity: Math.min(1, product.availableQuantity), unitPrice: Number(product.salePrice) }];
     });
     setSearch('');
   };
@@ -139,9 +215,13 @@ export default function Sales() {
     .filter((item) => item.quantity > 0));
 
   const finishSale = async () => {
+    if (savingRef.current) return;
+    if (pendingProduct) { setError('Confirme ou cancele o produto em edição antes de concluir a venda.'); quantityRef.current?.focus(); return; }
     if (!locationId || !cart.length) return setError('Selecione o bar e adicione ao menos um produto');
     if (discount > subtotal) return setError('O desconto não pode superar o subtotal');
+    if (paymentMethod === 'COMANDA' && !selectedCommand) { setError('Identifique a comanda antes de concluir a venda.'); cardInputRef.current?.focus(); return; }
     if (selectedCommand && total > Number(selectedCommand.valorTotal)) return setError(`Saldo insuficiente na comanda. Disponível: ${money(selectedCommand.valorTotal)}`);
+    savingRef.current = true;
     setSaving(true); setError(''); setOperationStatus('Registrando venda');
     try {
       const sale = await api.createSale({
@@ -151,15 +231,16 @@ export default function Sales() {
       });
       showToast('success', `Venda #${sale.number} concluída — ${money(sale.totalAmount)}`);
       setCart([]); setDiscount(0); setCustomerName(''); setNotes('');
-      const refreshed = await api.getSaleProducts(locationId); setProducts(refreshed); loadSales();
+      setSelectedCommand(null); setPaymentMethod('PIX'); waitingForCard.current = false;
       if (sale.printWarning) { setOperationStatus(sale.printWarning.message); showToast('warning', sale.printWarning.message); }
       else if (sale.printJob) {
         setOperationStatus(workstation.terminal?.online ? 'Venda concluída e impressão enviada' : 'Venda concluída; impressão aguardando o terminal');
         void watchPrintJob(sale.printJob.id);
       } else setOperationStatus('Venda concluída sem impressão');
-      setSelectedCommand(null); setPaymentMethod('PIX');
+      try { setProducts(await api.getSaleProducts(locationId)); } catch { setProducts([]); showToast('warning', 'Venda concluída, mas não foi possível atualizar o estoque. Selecione o local novamente.'); }
+      void loadSales();
     } catch (err: any) { setError(err.message); showToast('error', err.message); }
-    finally { setSaving(false); }
+    finally { savingRef.current = false; setSaving(false); }
   };
 
   const reprintSale = async (sale: any) => {
@@ -176,7 +257,22 @@ export default function Sales() {
     catch (err: any) { showToast('error', err.message); }
   };
 
-  return <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto">
+  return <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto" onKeyDown={(event) => {
+    if (salesOpen || saving || event.ctrlKey || event.altKey || event.metaKey || !canCreate) return;
+    if (event.key === 'Escape' && pendingProduct) { event.preventDefault(); pendingFocus.current = 'search'; setPendingProduct(null); setError(''); return; }
+    if (!['F2', 'F4', 'F6'].includes(event.key)) return;
+    event.preventDefault();
+    if (pendingProduct) { setError('Confirme a quantidade ou pressione Esc para cancelar o item.'); quantityRef.current?.focus(); return; }
+    if (event.key === 'F2') searchRef.current?.focus();
+    if (event.key === 'F4') {
+      if (selectedCommand) finishRef.current?.focus();
+      else paymentRef.current?.focus();
+    }
+    if (event.key === 'F6') {
+      if (selectedCommand) { finishRef.current?.focus(); return; }
+      waitingForCard.current = true; setPaymentMethod('COMANDA'); cardInputRef.current?.focus();
+    }
+  }}>
     <div className="flex shrink-0 items-center justify-between gap-3"><div><h1 className="text-xl font-bold text-surface-900">Frente de Vendas</h1><p className={`text-xs ${operationStatus ? 'font-medium text-brand-600' : 'text-surface-500'}`}>{operationStatus || 'Venda, baixa no estoque e emissão automática de comprovante'}</p></div><button className="btn-secondary flex shrink-0 items-center gap-2" onClick={() => setSalesOpen(true)}><History size={16}/>Vendas <span className="rounded-full bg-surface-100 px-1.5 text-xs">{summary.completedSales}</span></button></div>
     {error && <div className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
 
@@ -188,7 +284,7 @@ export default function Sales() {
     </section>
 
     {canCreate && <div className="grid shrink-0 gap-2 md:grid-cols-[minmax(0,1fr)_220px]">
-      <RFIDCommandPanel enabled={canCreate} busy={saving} selected={selectedCommand} onSelect={selectCommand}/>
+      <RFIDCommandPanel enabled={canCreate} busy={saving} selected={selectedCommand} onSelect={selectCommand} cardInputRef={cardInputRef}/>
       <div className="flex items-center justify-between rounded-xl border border-surface-200 bg-white px-4 py-3 md:flex-col md:items-end md:justify-center">
         <span className="text-sm text-surface-500">Saldo disponível</span>
         <strong className={`text-2xl font-bold tabular-nums ${selectedCommand ? 'text-orange-600' : 'text-surface-400'}`}>{selectedCommand ? money(selectedCommand.valorTotal) : '—'}</strong>
@@ -199,9 +295,11 @@ export default function Sales() {
       <section className="card flex min-h-[380px] flex-col overflow-hidden xl:min-h-0">
         <div className="grid shrink-0 gap-2 border-b border-surface-200 bg-surface-50 p-3 sm:grid-cols-[minmax(170px,0.8fr)_minmax(0,1.5fr)]">
           <div><label htmlFor="sale-location" className="mb-1 block text-xs font-semibold text-surface-600">Local de venda *</label><select id="sale-location" className="w-full" value={locationId} disabled={user?.role === 'FRENTE_VENDAS' && bars.length === 1} onChange={(e) => setLocationId(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
-          <div><label htmlFor="sale-search" className="mb-1 block text-xs font-semibold text-surface-600">Código ou descrição do produto</label><div className="relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"/><input id="sale-search" className="w-full pl-10" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Nome, SKU ou código de barras" disabled={!locationId}/></div></div>
+          <div><label htmlFor="sale-search" className="mb-1 block text-xs font-semibold text-surface-600">Código ou descrição do produto</label><div className="relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"/><input id="sale-search" ref={searchRef} className="w-full pl-10" value={search} onChange={(e) => { setSearch(e.target.value); setSearchIndex(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); chooseSearchedProduct(); } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); if (filteredProducts.length) setSearchIndex((current) => { if (current === null) return event.key === 'ArrowDown' ? 0 : filteredProducts.length - 1; return event.key === 'ArrowDown' ? Math.min(filteredProducts.length - 1, current + 1) : Math.max(0, current - 1); }); } }} placeholder="Nome, SKU ou código de barras" disabled={!locationId || !!pendingProduct}/></div></div>
         </div>
-        {locationId && <div className="shrink-0 border-b border-surface-200 px-3 py-2"><p className="mb-1.5 text-xs text-surface-500">Produtos disponíveis: {products.length} · Estoque: {totalUnitsAvailable.toLocaleString('pt-BR')} · Selecione para adicionar</p><div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">{filteredProducts.map((product) => <button key={product.id} onClick={() => addProduct(product)} className="rounded-md border border-surface-200 bg-white px-2 py-1 text-left text-xs hover:border-brand-400 hover:bg-brand-50 disabled:opacity-50" disabled={product.salePrice === null || quantityInCart(product.id) >= product.availableQuantity}><span className="font-medium">{product.name}</span> · {product.salePrice === null ? 'Preço não cadastrado' : money(product.salePrice)} <span className="text-surface-500">· {Number(product.availableQuantity - quantityInCart(product.id)).toLocaleString('pt-BR')} {product.unit}</span></button>)}{!filteredProducts.length && <p className="py-2 text-xs text-surface-500">Nenhum produto encontrado neste local.</p>}</div></div>}
+        <p className="shrink-0 px-3 pt-1.5 text-[11px] text-surface-500">F2 buscar · Setas selecionar · Enter confirmar · Shift+Enter adicionar e buscar outro · F4 pagamento · F6 comanda · Esc cancelar item</p>
+        {pendingProduct && <div className="flex shrink-0 flex-wrap items-end gap-2 border-b border-brand-200 bg-brand-50 px-3 py-2"><div className="min-w-0 flex-1"><p className="text-xs text-surface-500">Produto selecionado</p><p className="truncate text-sm font-semibold">{pendingProduct.name}</p><p className="text-xs text-surface-500">Disponível: {Number((pendingProduct.availableQuantity - quantityInCart(pendingProduct.id)).toFixed(3)).toLocaleString('pt-BR')} {pendingProduct.unit}</p></div><div><label htmlFor="sale-pending-quantity" className="mb-1 block text-xs font-semibold">Quantidade ({pendingProduct.unit})</label><input id="sale-pending-quantity" ref={quantityRef} type="text" inputMode="decimal" className="w-28" value={pendingQuantity} onChange={(event) => setPendingQuantity(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); if (!event.repeat) confirmPendingProduct(event.shiftKey); } }}/></div><button type="button" className="btn-primary" onClick={() => confirmPendingProduct()}>Adicionar</button><button type="button" className="btn-secondary" onClick={() => { pendingFocus.current = 'search'; setPendingProduct(null); setError(''); }}>Cancelar</button></div>}
+        {locationId && <div className="shrink-0 border-b border-surface-200 px-3 py-2"><p className="mb-1.5 text-xs text-surface-500">Produtos disponíveis: {products.length} · Estoque: {totalUnitsAvailable.toLocaleString('pt-BR')} · Selecione para adicionar</p><div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">{filteredProducts.map((product, index) => <button key={product.id} onClick={() => addProduct(product)} className={`rounded-md border px-2 py-1 text-left text-xs hover:border-brand-400 hover:bg-brand-50 disabled:opacity-50 ${index === searchIndex ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-400' : 'border-surface-200 bg-white'}`} disabled={!!pendingProduct || product.salePrice === null || quantityInCart(product.id) >= product.availableQuantity}><span className="font-medium">{product.name}</span> · {product.salePrice === null ? 'Preço não cadastrado' : money(product.salePrice)} <span className="text-surface-500">· {Number(product.availableQuantity - quantityInCart(product.id)).toLocaleString('pt-BR')} {product.unit}</span></button>)}{!filteredProducts.length && <p className="py-2 text-xs text-surface-500">Nenhum produto encontrado neste local.</p>}</div></div>}
         <div className="flex shrink-0 items-center gap-2 border-b border-surface-200 px-3 py-2"><ShoppingCart size={16}/><h2 className="text-sm font-semibold">Itens da venda ({cart.length})</h2></div>
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full min-w-[650px] text-left text-sm"><thead className="sticky top-0 z-10 bg-surface-100 text-xs uppercase text-surface-600"><tr><th className="px-3 py-2">Código</th><th className="px-3 py-2">Descrição</th><th className="px-3 py-2">Quantidade</th><th className="px-3 py-2 text-right">Unitário</th><th className="px-3 py-2 text-right">Total</th><th className="px-3 py-2"><span className="sr-only">Remover</span></th></tr></thead>
@@ -214,11 +312,11 @@ export default function Sales() {
       <aside className="card flex min-h-0 flex-col overflow-hidden">
         <div className="border-b border-surface-200 px-4 py-2.5"><h2 className="font-semibold">Pagamento</h2></div>
         <div className="flex flex-1 flex-col gap-2 p-3">
-          <div><label htmlFor="sale-payment" className="mb-1 block text-xs font-medium">Forma de pagamento</label><select id="sale-payment" className="w-full" value={paymentMethod} disabled={!!selectedCommand} onChange={(e) => setPaymentMethod(e.target.value)}>{paymentMethods.filter(([value]) => value !== 'COMANDA' || selectedCommand).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+          <div><label htmlFor="sale-payment" className="mb-1 block text-xs font-medium">Forma de pagamento</label><select id="sale-payment" ref={paymentRef} className="w-full" value={paymentMethod} disabled={!!selectedCommand} onChange={(event) => { const method = event.target.value; setPaymentMethod(method); waitingForCard.current = method === 'COMANDA'; if (method === 'COMANDA') cardInputRef.current?.focus(); }} onKeyDown={(event) => { if (event.key !== 'Enter') return; event.preventDefault(); if (paymentMethod === 'COMANDA' && !selectedCommand) { waitingForCard.current = true; cardInputRef.current?.focus(); } else finishRef.current?.focus(); }}>{paymentMethods.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>
           <div><label htmlFor="sale-discount" className="mb-1 block text-xs font-medium">Desconto</label><input id="sale-discount" className="w-full" type="number" min="0" max={subtotal} step="0.01" value={discount || ''} onChange={(e) => setDiscount(Number(e.target.value))}/></div>
           <input aria-label="Cliente (opcional)" className="w-full" placeholder="Cliente (opcional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)}/>
           <input aria-label="Observações" className="w-full" placeholder="Observações" value={notes} onChange={(e) => setNotes(e.target.value)}/>
-          <div className="mt-auto border-t border-surface-200 pt-3"><div className="flex justify-between text-sm text-surface-500"><span>Subtotal dos produtos</span><span>{money(subtotal)}</span></div><div className="mt-1 flex justify-between text-sm text-surface-500"><span>Desconto</span><span>{money(discount)}</span></div><p className="mt-4 text-sm text-surface-600">Total da venda</p><p className="text-3xl font-bold tabular-nums text-surface-900">{money(total)}</p><button className="btn-primary mt-3 w-full disabled:opacity-50" disabled={saving || !cart.length} onClick={finishSale}>{saving ? 'Processando...' : 'Concluir venda'}</button></div>
+          <div className="mt-auto border-t border-surface-200 pt-3"><div className="flex justify-between text-sm text-surface-500"><span>Subtotal dos produtos</span><span>{money(subtotal)}</span></div><div className="mt-1 flex justify-between text-sm text-surface-500"><span>Desconto</span><span>{money(discount)}</span></div><p className="mt-4 text-sm text-surface-600">Total da venda</p><p className="text-3xl font-bold tabular-nums text-surface-900">{money(total)}</p><button ref={finishRef} className="btn-primary mt-3 w-full disabled:opacity-50" disabled={saving || !cart.length || !!pendingProduct || (paymentMethod === 'COMANDA' && !selectedCommand)} onClick={finishSale}>{saving ? 'Processando...' : 'Concluir venda'}</button></div>
         </div>
       </aside>
     </div>}

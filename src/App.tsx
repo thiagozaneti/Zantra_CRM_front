@@ -25,6 +25,7 @@ import Pending from './pages/Pending';
 import Closings from './pages/Closings';
 import Inventories from './pages/Inventories';
 import Commands from './pages/Commands';
+import CardRefunds from './pages/CardRefunds';
 import PrinterSettings from './pages/PrinterSettings';
 import Kiosks from './pages/Kiosks';
 
@@ -65,6 +66,7 @@ function AppRoutes() {
         <Route path="consumption" element={<ProtectedRoute module="consumption"><Consumption /></ProtectedRoute>} />
         <Route path="sales" element={<ProtectedRoute module="sales"><Sales /></ProtectedRoute>} />
         <Route path="commands" element={<ProtectedRoute module="commands"><Commands /></ProtectedRoute>} />
+        <Route path="card-refunds" element={<ProtectedRoute module="card-refunds"><CardRefunds /></ProtectedRoute>} />
         <Route path="reports" element={<ProtectedRoute module="reports"><Reports /></ProtectedRoute>} />
         <Route path="users" element={<ProtectedRoute module="users"><Users /></ProtectedRoute>} />
         <Route path="audit" element={<ProtectedRoute module="audit"><Audit /></ProtectedRoute>} />
