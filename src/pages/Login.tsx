@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Activity, Boxes, Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
-import logo from '../images/logo.png';
+import rioDasPedrasLogo from '../images/LOGO-ACQUA-PARK-TOPO-SITE-300X300-1.png';
 
 const benefits = [
   { icon: Boxes, title: 'Operação centralizada', text: 'Estoque, movimentações, vendas e consumo em um único ambiente.' },
@@ -40,7 +40,9 @@ export default function Login() {
       <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)', backgroundSize: '42px 42px' }}/>
 
       <div className="relative z-10 flex w-full max-w-2xl flex-col justify-between">
-        <img src={logo} alt="Zantra" className="h-14 xl:h-16 2xl:h-20 w-fit object-contain object-left brightness-0 invert"/>
+        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white p-1 shadow-sm 2xl:h-24 2xl:w-24">
+          <img src={rioDasPedrasLogo} alt="Rio das Pedras Acqua Park" className="h-full w-full object-contain"/>
+        </div>
 
         <div className="my-5 xl:my-7 2xl:my-10">
           <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-brand-100">Gestão integrada</span>
@@ -62,7 +64,7 @@ export default function Login() {
 
     <section className="flex min-h-screen items-center justify-center px-5 py-7 sm:px-10 lg:h-screen lg:min-h-0 lg:px-10 lg:py-5 xl:px-14 2xl:px-20">
       <div className="w-full max-w-[410px]">
-        <div className="mb-7 lg:hidden"><img src={logo} alt="Zantra" className="h-16 w-fit object-contain"/></div>
+        <div className="mb-7 lg:hidden"><img src={rioDasPedrasLogo} alt="Rio das Pedras Acqua Park" className="h-20 w-20 object-contain"/></div>
 
         <div className="mb-6 2xl:mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600">Área segura</p>

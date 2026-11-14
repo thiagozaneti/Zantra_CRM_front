@@ -7,6 +7,7 @@ import {
   PanelLeftClose, PanelLeftOpen, PackagePlus, KeyRound, Bell, ClipboardList, CalendarCheck, ClipboardCheck, CreditCard, Printer
 } from 'lucide-react';
 import icon from '../images/icon.png';
+import rioDasPedrasLogo from '../images/LOGO-ACQUA-PARK-TOPO-SITE-300X300-1.png';
 import { api } from '../lib/api';
 
 const modulePermissions: Record<string, string> = {
@@ -118,9 +119,11 @@ export default function Layout() {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        {/* Logo */}
-        <div className={`h-16 flex items-center px-5 border-b border-surface-200 shrink-0 ${sidebarCollapsed ? 'lg:justify-center lg:px-2' : ''}`}>
-          <img src={icon} alt="Zantra" className="h-10" />
+        {/* Marcas */}
+        <div className={`h-16 flex items-center gap-3 px-5 border-b border-surface-200 shrink-0 ${sidebarCollapsed ? 'lg:justify-center lg:gap-1 lg:px-1' : ''}`}>
+          <img src={icon} alt="Zantra" className={`h-10 w-10 shrink-0 object-contain ${sidebarCollapsed ? 'lg:h-8 lg:w-8' : ''}`} />
+          <span aria-hidden="true" className={`h-8 w-px shrink-0 bg-surface-200 ${sidebarCollapsed ? 'lg:hidden' : ''}`} />
+          <img src={rioDasPedrasLogo} alt="Rio das Pedras Acqua Park" className={`h-12 w-12 shrink-0 object-contain ${sidebarCollapsed ? 'lg:h-8 lg:w-8' : ''}`} />
         </div>
 
         {/* Navigation */}
