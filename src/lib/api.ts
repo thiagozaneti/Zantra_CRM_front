@@ -164,6 +164,7 @@ export const api = {
   reverseSale: (id: string, reason: string) => request(`/sales/${id}/reverse`, { method: 'POST', body: JSON.stringify({ reason }) }),
   identifyRFIDCard: (cardCode: string, signal?: AbortSignal) => request('/rfid/identify', { method: 'POST', body: JSON.stringify({ cardCode }), signal }),
   getCommands: () => request('/commands'),
+  getCommandPurchases: (id: string, page: number) => request(`/commands/${encodeURIComponent(id)}/purchases?page=${page}`),
   createCommand: (cardCode: string, initialValue = 0, paymentMethod?: string) => request('/commands', { method: 'POST', body: JSON.stringify({ cardCode, initialValue, paymentMethod }) }),
   identifyRefundCard: (cardCode: string) => request('/card-refunds/identify', { method: 'POST', body: JSON.stringify({ cardCode }) }),
   getCardRefunds: () => request('/card-refunds'),

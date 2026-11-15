@@ -255,7 +255,7 @@ export default function Sales() {
     setLocationId(nextLocation);
   };
 
-  return <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto" onKeyDown={(event) => {
+  return <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden" onKeyDown={(event) => {
     if (salesOpen || saving || event.ctrlKey || event.altKey || event.metaKey || !canCreate) return;
     if (event.key === 'Escape' && pendingProduct) { event.preventDefault(); pendingFocus.current = 'search'; setPendingProduct(null); setError(''); return; }
     if (!['F2', 'F4', 'F6'].includes(event.key)) return;
@@ -288,8 +288,8 @@ export default function Sales() {
       </div>
     </div>}
 
-    {canCreate && <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:min-h-[410px] xl:grid-cols-[minmax(0,1fr)_290px]">
-      <section className="card flex min-h-[380px] flex-col overflow-hidden xl:min-h-0">
+    {canCreate && <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 xl:grid-cols-[minmax(0,1fr)_290px] xl:grid-rows-1">
+      <section className="card flex min-h-0 flex-col overflow-hidden">
         <div className="grid shrink-0 gap-2 border-b border-surface-200 bg-surface-50 p-3 sm:grid-cols-[minmax(170px,0.8fr)_minmax(0,1.5fr)]">
           <div><label htmlFor="sale-location" className="mb-1 block text-xs font-semibold text-surface-600">Local de venda *</label><select id="sale-location" className="w-full" value={locationId} disabled={saving || (user?.role === 'FRENTE_VENDAS' && bars.length === 1)} onChange={(e) => void changeLocation(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
           <div><label htmlFor="sale-search" className="mb-1 block text-xs font-semibold text-surface-600">Código ou descrição do produto</label><div className="relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"/><input id="sale-search" ref={searchRef} className="w-full pl-10" value={search} onChange={(e) => { setSearch(e.target.value); setSearchIndex(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); chooseSearchedProduct(); } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); if (filteredProducts.length) setSearchIndex((current) => { if (current === null) return event.key === 'ArrowDown' ? 0 : filteredProducts.length - 1; return event.key === 'ArrowDown' ? Math.min(filteredProducts.length - 1, current + 1) : Math.max(0, current - 1); }); } }} placeholder="Nome, SKU ou código de barras" disabled={!locationId || !!pendingProduct}/></div></div>

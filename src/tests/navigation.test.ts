@@ -7,12 +7,13 @@ describe('Navegação por áreas', () => {
     expect(groups.map((group) => group.id)).toEqual(['home', 'sales', 'admin']);
     expect(groups.flatMap((group) => group.pages).map((page) => page.path)).toEqual(['/sales', '/security']);
     expect(visibleNavigation([]).map((group) => group.id)).toEqual(['home']);
+    expect(visibleNavigation(['card-refunds:view']).flatMap((group) => group.pages.map((page) => page.path))).toEqual(['/commands']);
   });
   it('reconhece as URLs existentes, inclusive acessos diretos', () => {
     expect(activeNavigation('/')?.id).toBe('home');
-    expect(activeNavigation('/card-refunds')?.id).toBe('sales');
+    expect(activeNavigation('/commands')?.id).toBe('sales');
     expect(activeNavigation('/inventories')?.id).toBe('stock');
     expect(activeNavigation('/kiosks')?.id).toBe('club');
-    expect(new Set(navigation.flatMap((group) => group.pages.map((page) => page.path))).size).toBe(19);
+    expect(new Set(navigation.flatMap((group) => group.pages.map((page) => page.path))).size).toBe(18);
   });
 });

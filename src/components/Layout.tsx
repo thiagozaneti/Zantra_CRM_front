@@ -192,7 +192,7 @@ export default function Layout() {
         {activeGroup && activeGroup.id !== 'home' && <div className="shrink-0 border-b border-surface-200 bg-white px-4"><div className="flex min-h-11 items-center gap-4"><span className="hidden shrink-0 text-sm font-semibold text-surface-700 md:block">{activeGroup.label}</span>{activePages.length > 1 && <nav aria-label={`Páginas de ${activeGroup.label}`} className="flex min-w-0 gap-1 overflow-x-auto">{activePages.map((page) => <NavLink key={page.path} to={page.path} className={({ isActive }) => `whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-surface-600 hover:text-surface-900'}`}>{page.label}</NavLink>)}</nav>}{activePages.length === 1 && <span className="py-3 text-sm text-surface-600">{activePages[0].label}</span>}</div></div>}
 
         {/* Page content */}
-        <main className="flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden overscroll-contain">
+        <main className={location.pathname === '/sales' ? 'flex-1 min-h-0 overflow-hidden p-2' : 'flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden overscroll-contain'}>
           <Suspense fallback={<div role="status" className="p-8 text-center text-surface-700">Carregando tela...</div>}><Outlet /></Suspense>
         </main>
       </div>

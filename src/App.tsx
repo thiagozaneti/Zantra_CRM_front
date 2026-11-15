@@ -26,7 +26,6 @@ const Pending = lazy(() => import('./pages/Pending'));
 const Closings = lazy(() => import('./pages/Closings'));
 const Inventories = lazy(() => import('./pages/Inventories'));
 const Commands = lazy(() => import('./pages/Commands'));
-const CardRefunds = lazy(() => import('./pages/CardRefunds'));
 const PrinterSettings = lazy(() => import('./pages/PrinterSettings'));
 const Kiosks = lazy(() => import('./pages/Kiosks'));
 
@@ -37,7 +36,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 function ProtectedRoute({ module, children }: { module: string; children: React.ReactNode }) {
-  if (!hasPermission(module)) {
+  if (!hasPermission(module) && !(module === 'commands' && hasPermission('card-refunds'))) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <Shield size={48} className="text-red-500" />
@@ -67,7 +66,7 @@ function AppRoutes() {
         <Route path="consumption" element={<ProtectedRoute module="consumption"><Consumption /></ProtectedRoute>} />
         <Route path="sales" element={<ProtectedRoute module="sales"><Sales /></ProtectedRoute>} />
         <Route path="commands" element={<ProtectedRoute module="commands"><Commands /></ProtectedRoute>} />
-        <Route path="card-refunds" element={<ProtectedRoute module="card-refunds"><CardRefunds /></ProtectedRoute>} />
+        <Route path="card-refunds" element={<ProtectedRoute module="card-refunds"><Navigate to="/commands?tab=refund" replace /></ProtectedRoute>} />
         <Route path="reports" element={<ProtectedRoute module="reports"><Reports /></ProtectedRoute>} />
         <Route path="users" element={<ProtectedRoute module="users"><Users /></ProtectedRoute>} />
         <Route path="audit" element={<ProtectedRoute module="audit"><Audit /></ProtectedRoute>} />

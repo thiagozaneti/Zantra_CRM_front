@@ -4,7 +4,7 @@ import CommandManagement from '../components/CommandManagement';
 import { api } from '../lib/api';
 
 const permissions = vi.hoisted(() => ({ create: false, update: false }));
-vi.mock('../lib/api', () => ({ api: { getCommands: vi.fn(), createCommand: vi.fn(), updateCommandValue: vi.fn(), updateCommandStatus: vi.fn() } }));
+vi.mock('../lib/api', () => ({ api: { getCommands: vi.fn(), getCommandPurchases: vi.fn(), createCommand: vi.fn(), updateCommandValue: vi.fn(), updateCommandStatus: vi.fn() } }));
 vi.mock('../components/Layout', () => ({ hasActionPermission: (permission: string) => permission === 'commands:create' ? permissions.create : permissions.update }));
 vi.mock('../components/Toast', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 
@@ -43,5 +43,17 @@ describe('Comandas', () => {
     render(<CommandManagement/>);
     expect(await screen.findByRole('button', { name: 'Adicionar crédito' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Cadastrar' })).toBeNull();
+  });
+
+  it('carrega compras somente ao abrir o cartão e oferece paginação', async () => {
+    vi.mocked(api.getCommandPurchases).mockResolvedValue({ data: [{ id: 'venda', number: 7, createdAt: '2026-01-01', status: 'CONCLUIDA', totalAmount: 15, location: { name: 'Bar' }, items: [{ product: { name: 'Água', unit: 'un' }, quantity: 1, total: 15 }] }], pagination: { page: 1, pages: 2, total: 11 } });
+    render(<CommandManagement/>);
+    expect(api.getCommandPurchases).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button', { name: /Cartão 1234/ }));
+    expect(await screen.findByText(/Venda #7/)).toBeTruthy();
+    expect(screen.getByText(/Água/)).toBeTruthy();
+    expect(api.getCommandPurchases).toHaveBeenCalledWith('1', 1);
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima página' }));
+    await waitFor(() => expect(api.getCommandPurchases).toHaveBeenCalledWith('1', 2));
   });
 });

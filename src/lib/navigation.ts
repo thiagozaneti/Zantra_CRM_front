@@ -20,7 +20,6 @@ export const navigation: NavigationGroup[] = [
   { id: 'sales', label: 'Vendas e cartões', icon: ShoppingCart, color: 'bg-amber-100 text-amber-800', pages: [
     { path: '/sales', label: 'Frente de vendas', permission: 'sales:view', description: 'Registrar uma venda' },
     { path: '/commands', label: 'Comandas', permission: 'commands:view', description: 'Cadastrar e recarregar cartões' },
-    { path: '/card-refunds', label: 'Estorno de saldo', permission: 'card-refunds:view', description: 'Devolver saldo de um cartão' },
   ] },
   { id: 'club', label: 'Clube', icon: TentTree, color: 'bg-emerald-100 text-emerald-800', pages: [
     { path: '/kiosks', label: 'Quiosques e reservas', permission: 'kiosks:view', description: 'Administrar quiosques e reservas' },
@@ -39,7 +38,7 @@ export const navigation: NavigationGroup[] = [
 ];
 
 export function visibleNavigation(permissions: string[]): NavigationGroup[] {
-  return navigation.map((group) => ({ ...group, pages: group.pages.filter((page) => permissions.includes(page.permission)) }))
+  return navigation.map((group) => ({ ...group, pages: group.pages.filter((page) => permissions.includes(page.permission) || (page.path === '/commands' && permissions.includes('card-refunds:view'))) }))
     .filter((group) => group.id === 'home' || group.pages.length > 0);
 }
 

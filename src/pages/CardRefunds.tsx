@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { CardRefund, downloadCardRefundReceipt, refundMethods, refundMoney } from '../lib/cardRefundReceipt';
-import { Link } from 'react-router-dom';
 
 type Card = { id: string; cardCode: string; status: string; balance: string; cardholderName: string | null };
 type Pending = { commandId: string; requestId: string; amount: string; paymentMethod: string; reason: string; cardCode: string };
@@ -104,7 +103,6 @@ export default function CardRefunds() {
 
   return <div className="mx-auto max-w-6xl space-y-5">
     <div><h1 className="text-2xl font-bold text-surface-900">Estorno de saldo</h1><p className="mt-1 text-sm text-surface-500">Consulte o cartão e registre a devolução do saldo ao portador.</p></div>
-    {hasActionPermission('commands:view') && <nav aria-label="Operações de comandas" className="flex flex-wrap gap-2"><Link to="/commands" className="btn-secondary">Comandas</Link><span aria-current="page" className="rounded-lg bg-brand-100 px-4 py-2 font-semibold text-brand-800">Estorno de saldo</span></nav>}
     {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
     {pending && <section className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-semibold">Solicitação aguardando confirmação</p><p className="mt-1">Cartão {pending.cardCode} · {refundMoney(pending.amount)} · {refundMethods[pending.paymentMethod]}. A resposta pode ter sido interrompida. Confira o histórico; reenviar usa o mesmo identificador e não deve gerar outra devolução.</p><div className="mt-3 flex flex-wrap gap-2"><button className="btn-primary" type="button" disabled={busy || !canCreate} onClick={() => void retry()}>Reenviar mesma solicitação</button><button className="btn-secondary" type="button" disabled={busy} onClick={() => void discard()}>Descartar tentativa</button></div></section>}
     <div className="grid gap-4 lg:grid-cols-2">
