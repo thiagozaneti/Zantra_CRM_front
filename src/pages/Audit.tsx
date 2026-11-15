@@ -126,7 +126,7 @@ export default function Audit() {
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-surface-600">{log.product?.name || '-'}</span>
+              <span className="text-surface-600">{productLabel(log.product, '-')}</span>
               <span className="font-semibold text-surface-900">{log.quantityMoved}</span>
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function Audit() {
                       {getOpLabel(log.operationType)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-surface-600">{log.product?.name || '-'}</td>
+                  <td className="px-4 py-3 text-surface-600">{productLabel(log.product, '-')}</td>
                   <td className="px-4 py-3 text-surface-600">{log.quantityBefore || 0}</td>
                   <td className="px-4 py-3 font-semibold text-surface-900">{log.quantityMoved}</td>
                   <td className="px-4 py-3 font-semibold text-surface-900">{log.quantityAfter}</td>
@@ -175,3 +175,4 @@ export default function Audit() {
     </div>
   );
 }
+import { productLabel } from '../lib/productLabel';

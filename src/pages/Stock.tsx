@@ -15,6 +15,7 @@ export default function Stock() {
   const [fLocationId, setFLocationId] = useState('');
   const [fCategory, setFCategory] = useState('');
   const [fProductId, setFProductId] = useState('');
+  const [search, setSearch] = useState('');
   const [atDate, setAtDate] = useState('');
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ productId: '', locationId: '', newQty: 0, minStock: 0, reason: '' });
@@ -80,7 +81,9 @@ export default function Stock() {
   };
 
   // Group stocks by product for matrix view
-  const matrix = stocks.reduce((acc: any, s: any) => {
+  const searchTerm = search.trim().toLocaleLowerCase('pt-BR');
+  const filteredStocks = stocks.filter((stock) => !searchTerm || [productLabel(stock.product), stock.product.sku, stock.product.barcode].some((value) => value?.toLocaleLowerCase('pt-BR').includes(searchTerm)));
+  const matrix = filteredStocks.reduce((acc: any, s: any) => {
     const key = s.product.id;
     if (!acc[key]) acc[key] = { product: s.product, locations: {} };
     acc[key].locations[s.location.id] = { quantity: s.quantity, location: s.location, effectiveMinStock: s.effectiveMinStock, product: s.product };
@@ -105,6 +108,7 @@ export default function Stock() {
       {/* Filters */}
       <div className="card">
         <div className="card-body">
+          <div className="mb-4"><label htmlFor="stock-search" className="block text-sm font-medium text-surface-700 mb-1">Buscar produto</label><input id="stock-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Nome, SKU ou código de barras" className="w-full" /></div>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label htmlFor="stock-filter-location" className="block text-xs font-medium text-surface-500 mb-1.5">Local</label>
@@ -139,10 +143,10 @@ export default function Stock() {
           <div key={row.product.id} className="card p-4">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <p className="font-medium text-surface-900">{row.product.name}</p>
+                <p className="font-medium text-surface-900">{productLabel(row.product)}</p>
                 <p className="text-xs text-surface-500">{row.product.category || 'Sem categoria'}</p>
               </div>
-              {canAdjust && !atDate && activeLocations.length > 0 && <button
+              {canAdjust && !atDate && !row.product.deletedAt && activeLocations.length > 0 && <button
                 onClick={() => openAdjust(Object.values(row.locations)[0] || { product: row.product, location: activeLocations[0], quantity: 0 })}
                 className="text-xs text-brand-600 font-medium"
               >
@@ -158,7 +162,7 @@ export default function Stock() {
                 return (
                   <button
                     key={l.id}
-                    onClick={() => canAdjust && !atDate && openAdjust(cell || { product: row.product, location: l, quantity: 0, effectiveMinStock: row.product.minStock })}
+                    onClick={() => canAdjust && !atDate && !row.product.deletedAt && openAdjust(cell || { product: row.product, location: l, quantity: 0, effectiveMinStock: row.product.minStock })}
                     className={`p-2 rounded-lg text-left ${
                       isLow ? 'bg-red-50 border border-red-200' :
                       qty > 0 ? 'bg-surface-50 border border-surface-200' :
@@ -196,10 +200,11 @@ export default function Stock() {
               </tr>
             </thead>
             <tbody>
+              {!loading && Object.keys(matrix).length === 0 && <tr><td colSpan={activeLocations.length + 2} className="px-4 py-8 text-center text-surface-600">{loadError ? 'Não foi possível carregar o estoque.' : 'Nenhum produto encontrado.'}</td></tr>}
               {Object.values(matrix).map((row: any) => (
                 <tr key={row.product.id} className="border-b border-surface-100 hover:bg-surface-50">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-surface-900">{row.product.name}</div>
+                    <div className="font-medium text-surface-900">{productLabel(row.product)}</div>
                     <div className="text-xs text-surface-500">{row.product.unit}</div>
                   </td>
                   <td className="px-4 py-3 text-surface-600">{row.product.category || '-'}</td>
@@ -211,7 +216,7 @@ export default function Stock() {
                     return (
                       <td key={l.id} className="text-center px-4 py-3">
                         <button
-                          onClick={() => canAdjust && !atDate && openAdjust(cell || { product: row.product, location: l, quantity: 0, effectiveMinStock: row.product.minStock })}
+                          onClick={() => canAdjust && !atDate && !row.product.deletedAt && openAdjust(cell || { product: row.product, location: l, quantity: 0, effectiveMinStock: row.product.minStock })}
                           className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                             isLow ? 'bg-red-100 text-red-700 hover:bg-red-200' :
                             qty > 0 ? 'bg-surface-100 text-surface-900 hover:bg-surface-200' :
@@ -275,3 +280,4 @@ export default function Stock() {
     </div>
   );
 }
+import { productLabel } from '../lib/productLabel';

@@ -98,7 +98,7 @@ export default function Reports() {
         case 'entries':
           return [
             new Date(item.createdAt).toLocaleDateString('pt-BR'),
-            item.product?.name || '',
+            productLabel(item.product, ''),
             item.quantity,
             item.unit,
             item.location?.name || '',
@@ -109,7 +109,7 @@ export default function Reports() {
         case 'transfers':
           return [
             new Date(item.createdAt).toLocaleDateString('pt-BR'),
-            item.product?.name || '',
+            productLabel(item.product, ''),
             item.quantity,
             item.origin?.name || '',
             item.destination?.name || '',
@@ -118,7 +118,7 @@ export default function Reports() {
           ];
         case 'consumption': {
           const labels: Record<string, string> = { NORMAL: 'Uso normal', PRODUCAO: 'Produção', PERDA: 'Perda', AVARIA: 'Avaria', CORTESIA: 'Cortesia', OUTRO: 'Outros' };
-          return [new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', labels[item.type] || item.type, item.product?.name || '', item.quantity, item.product?.unit || '', item.registeredBy?.name || '', item.reason || '', item.reversedAt ? 'Estornado' : 'Efetivado'];
+          return [new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', labels[item.type] || item.type, productLabel(item.product, ''), item.quantity, item.product?.unit || '', item.registeredBy?.name || '', item.reason || '', item.reversedAt ? 'Estornado' : 'Efetivado'];
         }
         case 'sales':
           return [`#${item.number}`, new Date(item.createdAt).toLocaleString('pt-BR'), item.location?.name || '', item.registeredBy?.name || '', item.paymentMethod, Number(item.subtotal).toFixed(2), Number(item.discount).toFixed(2), Number(item.totalAmount).toFixed(2), item.status === 'CONCLUIDA' ? 'Concluída' : 'Estornada'];
@@ -128,7 +128,7 @@ export default function Reports() {
           return [new Date(item.createdAt).toLocaleString('pt-BR'), item.command?.cardCode || '', item.user?.name || '', rechargePaymentMethods[item.paymentMethod] || item.paymentMethod || 'Não informado', Math.abs(Number(item.movedValue)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.previousValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), Number(item.newValue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), item.reason || ''];
         case 'stock':
           return [
-            item.product?.name || '',
+            productLabel(item.product, ''),
             item.product?.sku || '',
             item.product?.category || '',
             item.location?.name || '',
@@ -139,14 +139,14 @@ export default function Reports() {
           ];
         case 'inventories': {
           const inventoryLabels: Record<string, string> = { EM_CONTAGEM: 'Em contagem', PENDENTE_APROVACAO: 'Aguardando aprovação', RECONTAGEM_NECESSARIA: 'Recontagem', APLICADO: 'Aplicado', REJEITADO: 'Rejeitado' };
-          return [`#${item.inventoryNumber}`, new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', item.product?.name || '', item.expectedQuantity ?? '', item.countedQuantity ?? '', item.difference ?? '', Number(item.financialDifference || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), inventoryLabels[item.status] || item.status];
+          return [`#${item.inventoryNumber}`, new Date(item.createdAt).toLocaleDateString('pt-BR'), item.location?.name || '', productLabel(item.product, ''), item.expectedQuantity ?? '', item.countedQuantity ?? '', item.difference ?? '', Number(item.financialDifference || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), inventoryLabels[item.status] || item.status];
         }
         default:
           return [
             new Date(item.createdAt).toLocaleDateString('pt-BR'),
             item.user?.name || '',
             item.operationType || '',
-            item.product?.name || '',
+            productLabel(item.product, ''),
             item.quantityBefore || 0,
             item.quantityMoved || 0,
             item.quantityAfter || 0,
@@ -343,3 +343,4 @@ export default function Reports() {
     </div>
   );
 }
+import { productLabel } from '../lib/productLabel';

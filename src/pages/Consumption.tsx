@@ -82,13 +82,13 @@ export default function Consumption() {
       <div><h1 className="text-2xl font-bold text-surface-900">Consumo Interno</h1><p className="text-surface-500 mt-1">Baixas operacionais de produtos em qualquer local</p></div>
       {canCreate && <button className="btn-primary flex items-center gap-2" onClick={openNew}><Plus size={18}/> Registrar consumo</button>}
     </div>
-    <div className="space-y-3 md:hidden">{rows.map((row) => <div key={row.id} className="rounded-lg border bg-white p-4"><div className="flex justify-between gap-3"><div><p className="font-medium">{row.product.name}</p><p className="text-xs text-surface-400">{row.location.name} · {typeLabel(row.type || 'NORMAL')}</p></div><p className="font-semibold">{row.quantity} {row.product.unit}</p></div><div className="mt-3 flex items-center justify-between text-xs"><span className={row.reversedAt ? 'text-red-600' : 'text-emerald-600'}>{row.reversedAt ? 'Estornado' : 'Efetivado'}</span><span className="text-surface-400">{new Date(row.createdAt).toLocaleString('pt-BR')}</span>{canReverse && !row.reversedAt && <button onClick={() => reverse(row.id)} className="text-red-600"><RotateCcw size={16}/></button>}</div></div>)}</div>
+    <div className="space-y-3 md:hidden">{rows.map((row) => <div key={row.id} className="rounded-lg border bg-white p-4"><div className="flex justify-between gap-3"><div><p className="font-medium">{productLabel(row.product)}</p><p className="text-xs text-surface-400">{row.location.name} · {typeLabel(row.type || 'NORMAL')}</p></div><p className="font-semibold">{row.quantity} {row.product.unit}</p></div><div className="mt-3 flex items-center justify-between text-xs"><span className={row.reversedAt ? 'text-red-600' : 'text-emerald-600'}>{row.reversedAt ? 'Estornado' : 'Efetivado'}</span><span className="text-surface-400">{new Date(row.createdAt).toLocaleString('pt-BR')}</span>{canReverse && !row.reversedAt && <button onClick={() => reverse(row.id)} className="text-red-600"><RotateCcw size={16}/></button>}</div></div>)}</div>
     <div className="card hidden overflow-x-auto md:block"><table className="w-full text-sm"><thead><tr className="border-b bg-surface-50">
       {['Data','Local','Tipo','Produto','Quantidade','Responsável','Motivo','Situação',''].map((title) => <th key={title} className="text-left px-4 py-3 text-xs uppercase text-surface-600">{title}</th>)}
     </tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-b border-surface-100">
       <td className="px-4 py-3">{new Date(row.createdAt).toLocaleString('pt-BR')}</td><td className="px-4 py-3">{row.location.name}</td>
       <td className="px-4 py-3"><span className="rounded-full bg-surface-100 px-2 py-1 text-xs font-medium">{typeLabel(row.type || 'NORMAL')}</span></td>
-      <td className="px-4 py-3 font-medium">{row.product.name}</td><td className="px-4 py-3">{row.quantity} {row.product.unit}</td>
+      <td className="px-4 py-3 font-medium">{productLabel(row.product)}</td><td className="px-4 py-3">{row.quantity} {row.product.unit}</td>
       <td className="px-4 py-3">{row.registeredBy.name}</td><td className="px-4 py-3">{row.reason || '-'}</td>
       <td className="px-4 py-3">{row.reversedAt ? <span className="text-red-600">Estornado</span> : <span className="text-emerald-600">Efetivado</span>}</td>
       <td className="px-4 py-3">{canReverse && !row.reversedAt && <button title="Estornar" onClick={() => reverse(row.id)} className="text-red-600"><RotateCcw size={16}/></button>}</td>
@@ -106,3 +106,4 @@ export default function Consumption() {
     </div></div>}
   </div>;
 }
+import { productLabel } from '../lib/productLabel';

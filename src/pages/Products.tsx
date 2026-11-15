@@ -15,6 +15,7 @@ interface Product {
 
 export default function Products() {
   const canManage = hasActionPermission('products:manage');
+  const canDelete = hasActionPermission('products:delete');
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [products, setProducts] = useState<Product[]>([]);
@@ -89,6 +90,22 @@ export default function Products() {
     catch (err: any) { showToast('error', err.message); }
   };
 
+  const handleDelete = async (product: Product) => {
+    const confirmed = await confirm({
+      title: 'Excluir produto',
+      message: `Excluir ${product.name}? Ele não ficará disponível para novas operações. Os saldos e os registros existentes serão preservados e identificados como produto excluído.`,
+      confirmText: 'Excluir produto',
+      type: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await api.deleteProduct(product.id);
+      showToast('success', 'Produto excluído. Histórico e saldos preservados.');
+      await loadProducts();
+      await loadCategories();
+    } catch (err: any) { showToast('error', err.message); }
+  };
+
   return (
     <div className="space-y-4 lg:space-y-6">
       {loadError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar os produtos. <button className="font-semibold underline" onClick={loadProducts}>Tentar novamente</button></p>}
@@ -147,10 +164,11 @@ export default function Products() {
                   <Edit2 size={16} />
                 </button>}
                 {canManage && p.active && (
-                  <button onClick={() => handleDeactivate(p.id)} className="p-2 text-surface-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+                  <button aria-label={`Inativar ${p.name}`} title="Inativar" onClick={() => handleDeactivate(p.id)} className="p-2 text-surface-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg">
                     <Trash2 size={16} />
                   </button>
                 )}
+                {canDelete && <button aria-label={`Excluir ${p.name}`} title="Excluir produto" onClick={() => handleDelete(p)} className="p-2 text-red-700 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button>}
               </div>
             </div>
           </div>
@@ -208,10 +226,11 @@ export default function Products() {
                         <Edit2 size={16} />
                       </button>}
                       {canManage && p.active && (
-                        <button onClick={() => handleDeactivate(p.id)} className="p-1.5 text-surface-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <button aria-label={`Inativar ${p.name}`} title="Inativar" onClick={() => handleDeactivate(p.id)} className="p-1.5 text-surface-400 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors">
                           <Trash2 size={16} />
                         </button>
                       )}
+                      {canDelete && <button aria-label={`Excluir ${p.name}`} title="Excluir produto" onClick={() => handleDelete(p)} className="p-1.5 text-red-700 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button>}
                     </div>
                   </td>
                 </tr>

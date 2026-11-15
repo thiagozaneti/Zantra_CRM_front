@@ -112,7 +112,7 @@ export default function Entries() {
 
       <section className={`rounded-xl border p-4 ${unassigned.length ? 'border-amber-200 bg-amber-50/60' : 'border-surface-200 bg-white'}`}>
         <div className="flex items-center gap-2"><MapPin size={18} className={unassigned.length ? 'text-amber-600' : 'text-surface-400'}/><div><h2 className="font-semibold text-surface-900">Itens aguardando destino</h2><p className="text-xs text-surface-500">Entradas recebidas fisicamente, mas ainda não vinculadas a um local operacional.</p></div></div>
-        {unassigned.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{unassigned.map((stock: any) => <div key={stock.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-3"><div><p className="text-sm font-medium text-surface-900">{stock.product.name}</p><p className="text-xs text-amber-700">{stock.quantity} {stock.product.unit} sem destino</p></div>{canCreate && <button className="btn-secondary text-xs" onClick={() => { setAllocating(stock); setAllocation({ destinationId: '', quantity: stock.quantity, notes: '' }); setError(''); }}>Destinar</button>}</div>)}</div> : <p className="mt-3 text-sm text-surface-500">Não há itens pendentes de destinação.</p>}
+        {unassigned.length ? <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{unassigned.map((stock: any) => <div key={stock.id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-3"><div><p className="text-sm font-medium text-surface-900">{productLabel(stock.product)}</p><p className="text-xs text-amber-700">{stock.quantity} {stock.product.unit} sem destino</p></div>{canCreate && !stock.product.deletedAt && <button className="btn-secondary text-xs" onClick={() => { setAllocating(stock); setAllocation({ destinationId: '', quantity: stock.quantity, notes: '' }); setError(''); }}>Destinar</button>}</div>)}</div> : <p className="mt-3 text-sm text-surface-500">Não há itens pendentes de destinação.</p>}
       </section>
 
       {/* Filters */}
@@ -164,7 +164,7 @@ export default function Entries() {
           <div key={e.id} className="card p-4">
             <div className="flex items-start justify-between mb-2">
               <div>
-                <p className="font-medium text-surface-900">{e.product.name}</p>
+                <p className="font-medium text-surface-900">{productLabel(e.product)}</p>
                 <p className="text-xs text-surface-500">{e.location.name}</p>
               </div>
               <span className="font-semibold text-brand-600">{e.quantity} {e.unit}</span>
@@ -196,7 +196,7 @@ export default function Entries() {
               {entries.map((e: any) => (
                 <tr key={e.id} className="border-b border-surface-100 hover:bg-surface-50">
                   <td className="px-4 py-3 text-surface-600">{new Date(e.createdAt).toLocaleDateString('pt-BR')}</td>
-                  <td className="px-4 py-3 font-medium text-surface-900">{e.product.name}</td>
+                  <td className="px-4 py-3 font-medium text-surface-900">{productLabel(e.product)}</td>
                   <td className="px-4 py-3">{e.quantity} {e.unit}</td>
                   <td className="px-4 py-3 text-surface-600">{e.location.name}</td>
                   <td className="px-4 py-3 text-surface-600">{e.supplier || '-'}</td>
@@ -279,3 +279,4 @@ export default function Entries() {
     </div>
   );
 }
+import { productLabel } from '../lib/productLabel';

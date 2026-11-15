@@ -91,7 +91,7 @@ export default function Dashboard({ embedded = false }: { embedded?: boolean }) 
         <div className="divide-y divide-surface-100">
           {(data.management?.topProducts || []).map((product: any, index: number) => <div key={product.name} className="flex items-center gap-3 py-2.5 first:pt-0">
             <span className="w-5 text-xs tabular-nums text-surface-400">{String(index + 1).padStart(2, '0')}</span>
-            <span className="min-w-0 flex-1 truncate text-sm text-surface-700">{product.name}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-surface-700">{productLabel(product)}</span>
             <span className="text-sm font-semibold tabular-nums text-surface-900">{product.quantity.toLocaleString('pt-BR')} {product.unit}</span>
           </div>)}
           {!(data.management?.topProducts || []).length && <Empty text="Nenhuma venda no período"/>}
@@ -125,16 +125,16 @@ export default function Dashboard({ embedded = false }: { embedded?: boolean }) 
       <div className="mb-3"><h2 className="text-base font-semibold text-surface-900">Atividade recente</h2><p className="text-xs text-surface-500">Últimas movimentações registradas no sistema</p></div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ActivityPanel title="Últimas entradas" icon={ArrowDownToLine} empty="Nenhuma entrada registrada">
-          {data.recentEntries.map((entry: any) => <ActivityRow key={entry.id} title={entry.product.name} subtitle={entry.location.name} value={`${entry.quantity} ${entry.unit}`} date={dateTime(entry.createdAt)}/>) }
+          {data.recentEntries.map((entry: any) => <ActivityRow key={entry.id} title={productLabel(entry.product)} subtitle={entry.location.name} value={`${entry.quantity} ${entry.unit}`} date={dateTime(entry.createdAt)}/>) }
         </ActivityPanel>
         <ActivityPanel title="Últimas transferências" icon={ArrowLeftRight} empty="Nenhuma transferência registrada">
-          {data.recentTransfers.map((transfer: any) => <ActivityRow key={transfer.id} title={transfer.product.name} subtitle={`${transfer.origin.name} → ${transfer.destination.name}`} value={transfer.quantity} date={dateTime(transfer.createdAt)}/>) }
+          {data.recentTransfers.map((transfer: any) => <ActivityRow key={transfer.id} title={productLabel(transfer.product)} subtitle={`${transfer.origin.name} → ${transfer.destination.name}`} value={transfer.quantity} date={dateTime(transfer.createdAt)}/>) }
         </ActivityPanel>
         <ActivityPanel title="Últimas vendas" icon={ShoppingCart} empty="Nenhuma venda registrada">
           {(data.recentSales || []).map((sale: any) => <ActivityRow key={sale.id} title={`Venda #${sale.number}`} subtitle={`${sale.location.name} · ${sale._count.items} item(ns)`} value={money(sale.totalAmount)} date={dateTime(sale.createdAt)} danger={sale.status === 'ESTORNADA'}/>) }
         </ActivityPanel>
         <ActivityPanel title="Estoque baixo" icon={AlertTriangle} empty="Nenhum produto em alerta">
-          {data.lowStockItems.slice(0, 5).map((item: any) => <ActivityRow key={item.id} title={item.product.name} subtitle={item.location.name} value={`${item.quantity} ${item.product.unit}`} date={`Mín. ${item.effectiveMinStock ?? item.product.minStock}`} danger/>) }
+          {data.lowStockItems.slice(0, 5).map((item: any) => <ActivityRow key={item.id} title={productLabel(item.product)} subtitle={item.location.name} value={`${item.quantity} ${item.product.unit}`} date={`Mín. ${item.effectiveMinStock ?? item.product.minStock}`} danger/>) }
         </ActivityPanel>
       </div>
     </section>
@@ -164,3 +164,4 @@ function DashboardStat({ label, value, detail }: { label: string; value: string 
 
 function Empty({ text }: { text: string }) { return <p className="flex h-24 items-center justify-center text-center text-xs text-surface-400">{text}</p>; }
 function Loading() { return <div className="flex h-64 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-surface-200 border-t-brand-600"/></div>; }
+import { productLabel } from '../lib/productLabel';

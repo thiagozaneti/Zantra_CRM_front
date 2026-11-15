@@ -30,7 +30,7 @@ export function receiptRows(sale: ReceiptSale): string[][] {
   return sale.items.map((item, index) => [
     String(index + 1).padStart(3, '0'),
     item.product.sku || item.product.barcode || '—',
-    item.product.name,
+    productLabel(item.product),
     `${Number(item.quantity).toLocaleString('pt-BR', { maximumFractionDigits: 3 })} ${item.product.unit}`,
     money(item.unitPrice),
     money(item.total),
@@ -77,3 +77,4 @@ export function downloadSaleReceipt(sale: ReceiptSale) {
   doc.text('Comprovante de operação — não é documento fiscal.', 14, 285);
   doc.save(`comprovante-venda-${sale.number}.pdf`);
 }
+import { productLabel } from './productLabel';

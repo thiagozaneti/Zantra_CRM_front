@@ -189,7 +189,7 @@ export default function Transfers() {
           <div key={t.id} className="card p-4">
             <div className="flex items-start justify-between mb-2">
               <div>
-                <p className="font-medium text-surface-900">{t.product.name}</p>
+                <p className="font-medium text-surface-900">{productLabel(t.product)}</p>
                 <p className="text-xs text-surface-500">{t.origin.name} → {t.destination.name}</p>
               </div>
               <span className="font-semibold text-brand-600">{t.quantity} {t.product.unit}</span>
@@ -223,7 +223,7 @@ export default function Transfers() {
               {transfers.map((t: any) => (
                 <tr key={t.id} className="border-b border-surface-100 hover:bg-surface-50">
                   <td className="px-4 py-3 text-surface-600">{new Date(t.createdAt).toLocaleDateString('pt-BR')}</td>
-                  <td className="px-4 py-3 font-medium text-surface-900">{t.product.name}</td>
+                  <td className="px-4 py-3 font-medium text-surface-900">{productLabel(t.product)}</td>
                   <td className="px-4 py-3">{t.quantity} {t.product.unit}</td>
                   <td className="px-4 py-3 text-surface-600">{t.origin.name}</td>
                   <td className="px-4 py-3 text-surface-600">{t.destination.name}</td>
@@ -319,3 +319,4 @@ export default function Transfers() {
     </div>
   );
 }
+import { productLabel } from '../lib/productLabel';
