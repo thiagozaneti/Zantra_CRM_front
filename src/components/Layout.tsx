@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Bell, Search, X } from 'lucide-react';
+import { LogOut, Menu, Bell, Search, X } from 'lucide-react';
 import icon from '../images/icon.png';
 import rioDasPedrasLogo from '../images/LOGO-ACQUA-PARK-TOPO-SITE-300X300-1.png';
 import { api } from '../lib/api';
@@ -104,8 +104,8 @@ export default function Layout() {
         className={`
           fixed inset-y-0 left-0 z-50 h-screen w-64 bg-white border-r border-surface-200 flex flex-col overflow-hidden
           transform transition-[transform,width] duration-300 ease-in-out
-          lg:translate-x-0 lg:static lg:z-auto
-          ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
+          lg:translate-x-0 lg:static lg:z-auto lg:shrink-0
+          ${sidebarCollapsed ? 'lg:hidden' : 'lg:w-64'}
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
@@ -175,12 +175,13 @@ export default function Layout() {
             <Menu size={24} />
           </button>
           <button
-            className="hidden lg:inline-flex text-surface-500 hover:text-surface-900 hover:bg-surface-100 rounded-lg p-2 -ml-2"
+            className="hidden lg:inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100"
             onClick={toggleDesktopSidebar}
-            title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
-            aria-label={sidebarCollapsed ? 'Expandir menu lateral' : 'Recolher menu lateral'}
+            title={sidebarCollapsed ? 'Abrir menu' : 'Fechar menu'}
+            aria-label={sidebarCollapsed ? 'Abrir menu lateral' : 'Fechar menu lateral'}
+            aria-expanded={!sidebarCollapsed}
           >
-            {sidebarCollapsed ? <PanelLeftOpen size={21} /> : <PanelLeftClose size={21} />}
+            <Menu size={22} /> {sidebarCollapsed ? 'Abrir menu' : 'Fechar menu'}
           </button>
           <div className="relative ml-2 min-w-0 max-w-sm flex-1"><label htmlFor="find-page" className="sr-only">Encontrar uma tela</label><Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-surface-500"/><input id="find-page" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setSearch(''); }} placeholder="Encontrar uma tela" className="w-full py-2 pl-9 pr-9"/>{search && <button type="button" aria-label="Limpar busca de telas" onClick={() => setSearch('')} className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1.5"><X size={16}/></button>}{searchTerm && <div className="absolute left-0 top-full z-50 mt-1 max-h-80 w-full overflow-auto rounded-lg border border-surface-200 bg-white p-2 shadow-lg">{searchResults.map((page) => <NavLink key={page.path} to={page.path} onClick={() => setSearch('')} className="block rounded-lg px-3 py-2 hover:bg-brand-50"><span className="block text-sm font-semibold">{page.label}</span><span className="block text-xs text-surface-600">{page.description}</span></NavLink>)}{!searchResults.length && <p className="p-3 text-sm text-surface-600">Nenhuma tela encontrada entre seus acessos.</p>}</div>}</div>
           <div className="flex-1" />

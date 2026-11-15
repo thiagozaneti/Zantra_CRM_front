@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import CardRefunds from '../pages/CardRefunds';
 import { api } from '../lib/api';
+import { MemoryRouter } from 'react-router-dom';
 
 const confirmation = vi.fn();
 vi.mock('../lib/api', () => ({ api: { identifyRefundCard: vi.fn(), getCardRefunds: vi.fn(), createCardRefund: vi.fn() } }));
@@ -36,7 +37,7 @@ describe('Estorno de saldo', () => {
   afterEach(() => { cleanup(); sessionStorage.clear(); });
 
   it('identifica o cartão, confirma e registra a forma e o valor da devolução', async () => {
-    render(<CardRefunds/>);
+    render(<MemoryRouter><CardRefunds/></MemoryRouter>);
     expect(document.activeElement).toBe(screen.getByLabelText('Número do cartão'));
     await identify(); fillRefund();
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar devolução' }));
@@ -46,7 +47,7 @@ describe('Estorno de saldo', () => {
   });
 
   it('não envia valor acima do saldo nem sem confirmação', async () => {
-    render(<CardRefunds/>); await identify(); fillRefund('50,01');
+    render(<MemoryRouter><CardRefunds/></MemoryRouter>); await identify(); fillRefund('50,01');
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar devolução' }));
     expect(screen.getByRole('alert').textContent).toContain('não pode superar');
     expect(api.createCardRefund).not.toHaveBeenCalled();
@@ -58,7 +59,7 @@ describe('Estorno de saldo', () => {
 
   it('mantém a mesma chave após falha de rede e permite reenvio seguro', async () => {
     vi.mocked(api.createCardRefund).mockRejectedValueOnce(new TypeError('Falha de rede')).mockResolvedValueOnce(refund);
-    render(<CardRefunds/>); await identify(); fillRefund();
+    render(<MemoryRouter><CardRefunds/></MemoryRouter>); await identify(); fillRefund();
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar devolução' }));
     expect(await screen.findByText('Solicitação aguardando confirmação')).toBeTruthy();
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Falha de rede'));

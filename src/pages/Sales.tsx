@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, FileDown, History, Link2, Minus, Plus, Printer, RotateCcw, Search, ShoppingCart, Trash2, Wifi, WifiOff, X } from 'lucide-react';
+import { CheckCircle2, FileDown, History, Minus, Plus, Printer, RotateCcw, Search, ShoppingCart, Trash2, Wifi, WifiOff, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -34,8 +34,6 @@ export default function Sales() {
   const [search, setSearch] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('PIX');
   const [discount, setDiscount] = useState(0);
-  const [customerName, setCustomerName] = useState('');
-  const [notes, setNotes] = useState('');
   const [sales, setSales] = useState<any[]>([]);
   const [summary, setSummary] = useState({ completedSales: 0, totalAmount: 0 });
   const [saving, setSaving] = useState(false);
@@ -44,8 +42,6 @@ export default function Sales() {
   const [operationStatus, setOperationStatus] = useState('');
   const [printingSaleId, setPrintingSaleId] = useState<string | null>(null);
   const [workstation, setWorkstation] = useState<any>({ bound: false, terminal: null });
-  const [bindingCode, setBindingCode] = useState('');
-  const [binding, setBinding] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
   const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
   const [pendingQuantity, setPendingQuantity] = useState('1');
@@ -103,13 +99,6 @@ export default function Sales() {
       }
       setWorkstation(status);
     } catch { setWorkstation({ bound: false, terminal: null }); }
-  };
-
-  const bindWorkstation = async () => {
-    setBinding(true);
-    try { const result = await api.bindWorkstation(bindingCode); setWorkstation(result); setBindingCode(''); showToast('success', 'Este navegador foi vinculado ao Zantra Agent.'); }
-    catch (err: any) { showToast('error', err.message); }
-    finally { setBinding(false); }
   };
 
   const watchPrintJob = async (jobId: string) => {
@@ -225,12 +214,12 @@ export default function Sales() {
     setSaving(true); setError(''); setOperationStatus('Registrando venda');
     try {
       const sale = await api.createSale({
-        locationId, paymentMethod, discount, customerName: customerName || null, notes: notes || null,
+        locationId, paymentMethod, discount, customerName: null, notes: null,
         comandaId: selectedCommand?.comandaId || null, requestId: createUuid(), printReceipt: true,
         items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, ...(canOverridePrice ? { unitPrice: item.unitPrice } : {}) })),
       });
       showToast('success', `Venda #${sale.number} concluída — ${money(sale.totalAmount)}`);
-      setCart([]); setDiscount(0); setCustomerName(''); setNotes('');
+      setCart([]); setDiscount(0);
       setSelectedCommand(null); setPaymentMethod('PIX'); waitingForCard.current = false;
       if (sale.printWarning) { setOperationStatus(sale.printWarning.message); showToast('warning', sale.printWarning.message); }
       else if (sale.printJob) {
@@ -282,12 +271,11 @@ export default function Sales() {
       waitingForCard.current = true; setPaymentMethod('COMANDA'); cardInputRef.current?.focus();
     }
   }}>
-    <div className="flex shrink-0 items-center justify-between gap-3"><div><h1 className="text-xl font-bold text-surface-900">Frente de Vendas</h1><p className={`text-xs ${operationStatus ? 'font-medium text-brand-600' : 'text-surface-500'}`}>{operationStatus || 'Venda, baixa no estoque e emissão automática de comprovante'}</p></div><button className="btn-secondary flex shrink-0 items-center gap-2" onClick={() => setSalesOpen(true)}><History size={16}/>Vendas <span className="rounded-full bg-surface-100 px-1.5 text-xs">{summary.completedSales}</span></button></div>
+    <div className="flex shrink-0 items-center justify-between gap-3"><div><h1 className="text-xl font-bold text-surface-900">Frente de Vendas</h1><p className={`text-xs ${operationStatus ? 'font-medium text-brand-600' : 'text-surface-500'}`}>{operationStatus || 'Venda, baixa no estoque e emissão automática de comprovante'}</p></div><button className="btn-secondary flex shrink-0 items-center gap-2" onClick={() => setSalesOpen(true)}><History size={16}/>Vendas recentes <span className="rounded-full bg-surface-100 px-1.5 text-xs">{summary.completedSales}</span></button></div>
     {error && <div className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
 
     <section className={`shrink-0 rounded-xl border px-3 py-2.5 ${printerReady ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2.5">{printerReady ? <Wifi size={18} className="text-emerald-600"/> : workstation.bound ? <WifiOff size={18} className="text-amber-600"/> : <Link2 size={18} className="text-amber-600"/>}<div><p className="text-sm font-semibold text-surface-900">{printerReady ? 'Impressora conectada' : workstation.bound ? 'Impressora indisponível' : 'Impressora não vinculada'}</p><p className="text-[11px] text-surface-600">{workstation.bound ? `${workstation.terminal.name} · ${workstation.terminal.activePrinterName || 'sem impressora configurada'} · ${workstation.terminal.online ? 'Agent online' : 'Agent offline'}` : 'Informe o código exibido pelo Agent. O comprovante é solicitado em toda venda.'}</p></div></div>
-        {!workstation.bound && <div className="flex w-full gap-2 sm:w-auto"><input className="min-w-0 flex-1 sm:w-48" value={bindingCode} onChange={(event) => setBindingCode(event.target.value.toUpperCase())} placeholder="000-000" maxLength={30}/><button className="btn-primary" disabled={binding || bindingCode.trim().length < 6} onClick={() => void bindWorkstation()}>Vincular</button></div>}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2.5">{printerReady ? <Wifi size={18} className="text-emerald-600"/> : <WifiOff size={18} className="text-amber-600"/>}<div><p className="text-sm font-semibold text-surface-900">{printerReady ? 'Impressora conectada' : workstation.bound ? 'Impressora indisponível' : 'Impressora não vinculada'}</p><p className="text-[11px] text-surface-600">{workstation.bound ? `${workstation.terminal.name} · ${workstation.terminal.activePrinterName || 'sem impressora configurada'} · ${workstation.terminal.online ? 'Agent online' : 'Agent offline'}` : 'O vínculo é feito em Configuração de Impressora. A venda pode ser concluída sem conexão.'}</p></div></div>
       </div>
       {workstation.bound && locationId && workstation.terminal.locationId !== locationId && <p className="mt-1 text-xs font-medium text-red-700">O terminal pertence a outro local; a venda será concluída e o sistema registrará o aviso de impressão.</p>}
     </section>
@@ -323,8 +311,6 @@ export default function Sales() {
         <div className="flex flex-1 flex-col gap-2 p-3">
           <div><label htmlFor="sale-payment" className="mb-1 block text-xs font-medium">Forma de pagamento</label><select id="sale-payment" ref={paymentRef} className="w-full" value={paymentMethod} disabled={!!selectedCommand} onChange={(event) => { const method = event.target.value; setPaymentMethod(method); waitingForCard.current = method === 'COMANDA'; if (method === 'COMANDA') cardInputRef.current?.focus(); }} onKeyDown={(event) => { if (event.key !== 'Enter') return; event.preventDefault(); if (paymentMethod === 'COMANDA' && !selectedCommand) { waitingForCard.current = true; cardInputRef.current?.focus(); } else finishRef.current?.focus(); }}>{paymentMethods.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>
           <div><label htmlFor="sale-discount" className="mb-1 block text-xs font-medium">Desconto</label><input id="sale-discount" className="w-full" type="number" min="0" max={subtotal} step="0.01" value={discount || ''} onChange={(e) => setDiscount(Number(e.target.value))}/></div>
-          <input aria-label="Cliente (opcional)" className="w-full" placeholder="Cliente (opcional)" value={customerName} onChange={(e) => setCustomerName(e.target.value)}/>
-          <input aria-label="Observações" className="w-full" placeholder="Observações" value={notes} onChange={(e) => setNotes(e.target.value)}/>
           <div className="mt-auto border-t border-surface-200 pt-3"><div className="flex justify-between text-sm text-surface-500"><span>Subtotal dos produtos</span><span>{money(subtotal)}</span></div><div className="mt-1 flex justify-between text-sm text-surface-500"><span>Desconto</span><span>{money(discount)}</span></div><p className="mt-4 text-sm text-surface-600">Total da venda</p><p className="text-3xl font-bold tabular-nums text-surface-900">{money(total)}</p><button ref={finishRef} className="btn-primary mt-3 w-full disabled:opacity-50" disabled={saving || !cart.length || !!pendingProduct || (paymentMethod === 'COMANDA' && !selectedCommand)} onClick={finishSale}>{saving ? 'Processando...' : 'Concluir venda'}</button></div>
         </div>
       </aside>
