@@ -55,28 +55,32 @@ describe('Frente de vendas', () => {
     expect(screen.getByText(/Nenhum item na venda/)).toBeTruthy();
   });
 
-  it('opera por teclado e só conclui após confirmação explícita', async () => {
+  it('inicia na busca e conclui a venda ao confirmar a quantidade com Enter', async () => {
     render(<Sales/>);
     const search = await screen.findByLabelText('Código ou descrição do produto');
+    await waitFor(() => expect(document.activeElement).toBe(search));
     fireEvent.change(search, { target: { value: '123' } });
     fireEvent.keyDown(search, { key: 'Enter' });
     const quantity = await screen.findByLabelText('Quantidade (un)');
     expect(document.activeElement).toBe(quantity);
+    expect(api.createSale).not.toHaveBeenCalled();
     fireEvent.change(quantity, { target: { value: '2' } });
     fireEvent.keyDown(quantity, { key: 'Enter' });
-    expect(document.activeElement).toBe(screen.getByLabelText('Forma de pagamento'));
-    expect((screen.getByLabelText('Quantidade de Refrigerante') as HTMLInputElement).value).toBe('2');
-    expect(api.createSale).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText('Forma de pagamento'), { target: { value: 'COMANDA' } });
-    expect(document.activeElement).toBe(screen.getByLabelText('Número ou leitura da comanda'));
-    expect((screen.getByRole('button', { name: 'Concluir venda' }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Simular comanda' }));
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Concluir venda' })));
-    expect(api.createSale).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Concluir venda' }));
     await waitFor(() => expect(api.createSale).toHaveBeenCalledTimes(1));
+    expect(api.createSale).toHaveBeenCalledWith(expect.objectContaining({ paymentMethod: 'PIX', items: [{ productId: 'p1', quantity: 2, unitPrice: 5 }] }));
   });
 
+  it('guarda o local escolhido e restaura ao voltar ao PDV', async () => {
+    vi.mocked(api.getReferenceLocations).mockResolvedValue([{ id: 'bar-1', name: 'Bar', allowsSale: true }, { id: 'bar-2', name: 'Outro bar', allowsSale: true }]);
+    const view = render(<Sales/>);
+    const select = await screen.findByLabelText('Local de venda *');
+    await screen.findByRole('option', { name: 'Outro bar' });
+    fireEvent.change(select, { target: { value: 'bar-2' } });
+    expect(localStorage.getItem('zantra_sale_location_anonymous')).toBe('bar-2');
+    view.unmount();
+    render(<Sales/>);
+    await waitFor(() => expect((screen.getByLabelText('Local de venda *') as HTMLSelectElement).value).toBe('bar-2'));
+  });
   it('rejeita fração para unidade e quantidade acima do estoque', async () => {
     render(<Sales/>);
     const search = await screen.findByLabelText('Código ou descrição do produto');

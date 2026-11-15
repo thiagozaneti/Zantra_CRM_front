@@ -181,14 +181,14 @@ export default function Layout() {
         {/* Header */}
         <header className="h-14 bg-white border-b border-surface-200 flex items-center px-4 sticky top-0 z-30 shrink-0">
           <button
-            className="lg:hidden mr-2 inline-flex items-center gap-2 rounded-lg border-2 border-brand-700 bg-brand-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
+            className="lg:hidden mr-2 inline-flex items-center gap-2 rounded border-2 border-surface-800 bg-surface-800 px-3 py-2 text-sm font-bold text-white hover:bg-surface-700"
             onClick={() => setSidebarOpen(true)}
             aria-label="Abrir menu" aria-expanded={sidebarOpen}
           >
             <Menu size={22} /><span>Menu</span>
           </button>
           <button
-            className="hidden lg:inline-flex items-center gap-2 rounded-lg border-2 border-brand-700 bg-brand-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
+            className="hidden lg:inline-flex items-center gap-2 rounded border-2 border-surface-800 bg-surface-800 px-3 py-2 text-sm font-bold text-white hover:bg-surface-700"
             onClick={toggleDesktopSidebar}
             title={sidebarCollapsed ? 'Abrir menu' : 'Fechar menu'}
             aria-label={sidebarCollapsed ? 'Abrir menu lateral' : 'Fechar menu lateral'}

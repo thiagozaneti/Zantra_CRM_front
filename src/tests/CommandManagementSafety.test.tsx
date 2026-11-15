@@ -45,6 +45,16 @@ describe('Comandas', () => {
     expect(screen.queryByRole('button', { name: 'Cadastrar' })).toBeNull();
   });
 
+  it('localiza o cartão ao receber leitura RFID fora de um campo', async () => {
+    vi.spyOn(performance, 'now').mockReturnValue(10);
+    render(<CommandManagement/>);
+    await screen.findByText('Cartão 1234');
+    for (const key of '1234') fireEvent.keyDown(window, { key });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    await waitFor(() => expect((screen.getByLabelText('Buscar ou bipar cartão') as HTMLInputElement).value).toBe('1234'));
+    vi.restoreAllMocks();
+  });
+
   it('carrega compras somente ao abrir o cartão e oferece paginação', async () => {
     vi.mocked(api.getCommandPurchases).mockResolvedValue({ data: [{ id: 'venda', number: 7, createdAt: '2026-01-01', status: 'CONCLUIDA', totalAmount: 15, location: { name: 'Bar' }, items: [{ product: { name: 'Água', unit: 'un' }, quantity: 1, total: 15 }] }], pagination: { page: 1, pages: 2, total: 11 } });
     render(<CommandManagement/>);

@@ -46,6 +46,16 @@ describe('Estorno de saldo', () => {
     expect(sessionStorage.getItem('zantra_refund_pending_operador')).toBeNull();
   });
 
+  it('consulta a comanda ao receber uma leitura RFID fora do campo', async () => {
+    vi.spyOn(performance, 'now').mockReturnValue(10);
+    render(<MemoryRouter><CardRefunds/></MemoryRouter>);
+    for (const key of '00001234') fireEvent.keyDown(window, { key });
+    fireEvent.keyDown(window, { key: 'Enter' });
+    await waitFor(() => expect(api.identifyRefundCard).toHaveBeenCalledWith('00001234'));
+    expect(api.createCardRefund).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
   it('não envia valor acima do saldo nem sem confirmação', async () => {
     render(<MemoryRouter><CardRefunds/></MemoryRouter>); await identify(); fillRefund('50,01');
     fireEvent.click(screen.getByRole('button', { name: 'Confirmar devolução' }));

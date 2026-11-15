@@ -67,12 +67,12 @@ export default function RFIDCommandPanel({ enabled, busy, selected, onSelect, ca
     try { await identify(value); } catch { /* O estado do painel exibe o erro. */ }
   };
 
-  return <section className="card p-4">
+  return <section className="border border-surface-300 bg-white px-3 py-2">
     <div className="flex items-start justify-between gap-3">
       <div className="flex items-center gap-3"><span className={`rounded-xl p-2.5 ${status === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-brand-50 text-brand-600'}`}>{status === 'processing' ? <Loader2 className="animate-spin" size={21}/> : selected ? <CreditCard size={21}/> : <Radio size={21}/>}</span><div><p className="text-xs uppercase tracking-wide text-surface-400">Comanda RFID</p><p className="font-semibold text-surface-900">{labels[status]}</p>{selected && <p className="text-xs text-surface-500">Cartão {selected.cardCode} · saldo {Number(selected.valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>}</div></div>
       {selected && <button className="rounded-lg p-2 text-surface-400 hover:bg-surface-100" title="Remover comanda" onClick={() => { onSelect(null); reader.clearLastRead(); setStatus('waiting'); }}><X size={18}/></button>}
     </div>
-    {!selected && <div className="mt-2 flex gap-2">
+    {!selected && <div className="mt-1 flex max-w-md gap-2">
       <input ref={cardInputRef} aria-label="Número ou leitura da comanda" inputMode="numeric" autoComplete="off" className="min-w-0 flex-1" placeholder="Digite ou aproxime o cartão" maxLength={64} value={cardInput} disabled={!enabled || busy || status === 'processing'} onChange={(event) => setCardInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void identifyInput(); } }} />
       <button type="button" className="btn-secondary shrink-0" disabled={!enabled || busy || status === 'processing' || !cardInput.trim()} onClick={() => void identifyInput()}>Consultar</button>
     </div>}

@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
 import { CardRefund, downloadCardRefundReceipt, refundMethods, refundMoney } from '../lib/cardRefundReceipt';
+import { useRFIDReader } from '../hooks/useRFIDReader';
 
 type Card = { id: string; cardCode: string; status: string; balance: string; cardholderName: string | null };
 type Pending = { commandId: string; requestId: string; amount: string; paymentMethod: string; reason: string; cardCode: string };
@@ -47,14 +48,20 @@ export default function CardRefunds() {
   };
   useEffect(() => { void loadHistory(); if (!pending) cardRef.current?.focus(); }, []);
 
-  const identify = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const identifyCode = async (value: string) => {
     if (busyRef.current || pending) return;
-    if (!/^\d{4,64}$/.test(cardCode.trim())) { setCard(null); setError('Informe um código numérico de 4 a 64 dígitos.'); return; }
+    if (!/^\d{4,64}$/.test(value.trim())) { setCard(null); setError('Informe um código numérico de 4 a 64 dígitos.'); return; }
     busyRef.current = true; setBusy(true); setError(''); setCard(null); setLastRefund(null);
-    try { setCard(await api.identifyRefundCard(cardCode.trim())); setCardCode(''); }
+    try { setCard(await api.identifyRefundCard(value.trim())); setCardCode(''); }
     catch (failure: any) { setError(failure.message || 'Não foi possível consultar o cartão.'); }
     finally { busyRef.current = false; setBusy(false); }
+  };
+
+  useRFIDReader({ enabled: !busy && !pending, preventDefaultWhenActive: true, onRead: identifyCode });
+
+  const identify = (event: React.FormEvent) => {
+    event.preventDefault();
+    void identifyCode(cardCode);
   };
 
   const send = async (operation: Pending) => {

@@ -28,7 +28,7 @@ export default function Sales() {
   const canReverse = hasActionPermission('sales:reverse');
   const canOverridePrice = user?.role === 'ADMINISTRADOR' || user?.role === 'GERENTE';
   const [bars, setBars] = useState<any[]>([]);
-  const [locationId, setLocationId] = useState(user?.locations?.length === 1 ? user.locations[0].id : user?.assignedLocationId || '');
+  const [locationId, setLocationId] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
@@ -53,6 +53,7 @@ export default function Sales() {
   const finishRef = useRef<HTMLButtonElement>(null);
   const waitingForCard = useRef(false);
   const savingRef = useRef(false);
+  const completeAfterQuantity = useRef(false);
   const pendingFocus = useRef<'search' | 'payment' | 'finish' | null>(null);
 
   const selectCommand = (command: IdentifiedCommand | null) => {
@@ -117,9 +118,16 @@ export default function Sales() {
     api.getReferenceLocations().then((data) => {
       data = data.filter((location: any) => location.allowsSale && (user?.role !== 'FRENTE_VENDAS' || (user.locations?.map((item) => item.id) || (user.assignedLocationId ? [user.assignedLocationId] : [])).includes(location.id)));
       setBars(data);
-      if (!locationId && data.length === 1) setLocationId(data[0].id);
+      const saved = localStorage.getItem(`zantra_sale_location_${user?.id || 'anonymous'}`);
+      const preferred = saved || (user?.locations?.length === 1 ? user.locations[0].id : user?.assignedLocationId);
+      if (preferred && data.some((location: any) => location.id === preferred)) setLocationId(preferred);
+      else if (data.length === 1) setLocationId(data[0].id);
     }).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (locationId && canCreate) searchRef.current?.focus();
+  }, [locationId, canCreate]);
 
   useEffect(() => { void loadWorkstation(); const timer = setInterval(() => void loadWorkstation(), 30_000); return () => clearInterval(timer); }, []);
 
@@ -165,7 +173,7 @@ export default function Sales() {
     beginProduct(product);
   };
 
-  const confirmPendingProduct = (returnToSearch = false) => {
+  const confirmPendingProduct = (returnToSearch = false, finishAfterAdd = false) => {
     if (!pendingProduct) return;
     const quantity = Number(pendingQuantity.replace(',', '.'));
     const remaining = Number((pendingProduct.availableQuantity - quantityInCart(pendingProduct.id)).toFixed(3));
@@ -174,6 +182,7 @@ export default function Sales() {
       return;
     }
     if (quantity > remaining) { setError(`Estoque insuficiente. Disponível: ${remaining.toLocaleString('pt-BR')} ${pendingProduct.unit}.`); return; }
+    completeAfterQuantity.current = finishAfterAdd;
     const product = pendingProduct;
     setCart((current) => {
       const existing = current.find((item) => item.id === product.id);
@@ -232,6 +241,12 @@ export default function Sales() {
     finally { savingRef.current = false; setSaving(false); }
   };
 
+  useEffect(() => {
+    if (!completeAfterQuantity.current || pendingProduct || !cart.length) return;
+    completeAfterQuantity.current = false;
+    void finishSale();
+  }, [cart, pendingProduct]);
+
   const reprintSale = async (sale: any) => {
     setPrintingSaleId(sale.id); setOperationStatus('Enviando reimpressão');
     try { const result = await api.printSale(sale.id); showToast('success', `Reimpressão da venda #${sale.number} enfileirada`); setOperationStatus('Reimpressão enfileirada'); void watchPrintJob(result.job.id); }
@@ -253,6 +268,8 @@ export default function Sales() {
       if (!accepted) return;
     }
     setLocationId(nextLocation);
+    if (nextLocation) localStorage.setItem(`zantra_sale_location_${user?.id || 'anonymous'}`, nextLocation);
+    else localStorage.removeItem(`zantra_sale_location_${user?.id || 'anonymous'}`);
   };
 
   return <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden" onKeyDown={(event) => {
@@ -284,20 +301,20 @@ export default function Sales() {
 
     {canCreate && <div className="grid shrink-0 gap-2 md:grid-cols-[minmax(0,1fr)_220px]">
       <RFIDCommandPanel enabled={canCreate} busy={saving} selected={selectedCommand} onSelect={selectCommand} cardInputRef={cardInputRef}/>
-      <div className="flex items-center justify-between rounded-xl border border-surface-200 bg-white px-4 py-3 md:flex-col md:items-end md:justify-center">
+      <div className="flex items-center justify-between border border-surface-300 bg-white px-3 py-2 md:flex-col md:items-end md:justify-center">
         <span className="text-sm text-surface-500">Saldo disponível</span>
         <strong className={`text-2xl font-bold tabular-nums ${selectedCommand ? 'text-orange-600' : 'text-surface-400'}`}>{selectedCommand ? money(selectedCommand.valorTotal) : '—'}</strong>
       </div>
     </div>}
 
     {canCreate && <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 lg:grid-cols-[minmax(0,1fr)_290px] lg:grid-rows-1">
-      <section className="card flex min-h-0 flex-col overflow-hidden">
+      <section className="flex min-h-0 flex-col overflow-hidden border border-surface-300 bg-white">
         <div className="grid shrink-0 gap-2 border-b border-surface-200 bg-surface-50 p-3 sm:grid-cols-[minmax(170px,0.8fr)_minmax(0,1.5fr)]">
           <div><label htmlFor="sale-location" className="mb-1 block text-xs font-semibold text-surface-600">Local de venda *</label><select id="sale-location" className="w-full" value={locationId} disabled={saving || (user?.role === 'FRENTE_VENDAS' && bars.length === 1)} onChange={(e) => void changeLocation(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
           <div><label htmlFor="sale-search" className="mb-1 block text-xs font-semibold text-surface-600">Código ou descrição do produto</label><div className="relative"><Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400"/><input id="sale-search" ref={searchRef} className="w-full pl-10" value={search} onChange={(e) => { setSearch(e.target.value); setSearchIndex(null); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); chooseSearchedProduct(); } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); if (filteredProducts.length) setSearchIndex((current) => { if (current === null) return event.key === 'ArrowDown' ? 0 : filteredProducts.length - 1; return event.key === 'ArrowDown' ? Math.min(filteredProducts.length - 1, current + 1) : Math.max(0, current - 1); }); } }} placeholder="Nome, SKU ou código de barras" disabled={!locationId || !!pendingProduct}/></div></div>
         </div>
-        <p className="shrink-0 px-3 pt-1.5 text-[11px] text-surface-500">F2 buscar · Setas selecionar · Enter confirmar · Shift+Enter adicionar e buscar outro · F4 pagamento · F6 comanda · Esc cancelar item</p>
-        {pendingProduct && <div className="flex shrink-0 flex-wrap items-end gap-2 border-b border-brand-200 bg-brand-50 px-3 py-2"><div className="min-w-0 flex-1"><p className="text-xs text-surface-500">Produto selecionado</p><p className="truncate text-sm font-semibold">{pendingProduct.name}</p><p className="text-xs text-surface-500">Disponível: {Number((pendingProduct.availableQuantity - quantityInCart(pendingProduct.id)).toFixed(3)).toLocaleString('pt-BR')} {pendingProduct.unit}</p></div><div><label htmlFor="sale-pending-quantity" className="mb-1 block text-xs font-semibold">Quantidade ({pendingProduct.unit})</label><input id="sale-pending-quantity" ref={quantityRef} type="text" inputMode="decimal" className="w-28" value={pendingQuantity} onChange={(event) => setPendingQuantity(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); if (!event.repeat) confirmPendingProduct(event.shiftKey); } }}/></div><button type="button" className="btn-primary" onClick={() => confirmPendingProduct()}>Adicionar</button><button type="button" className="btn-secondary" onClick={() => { pendingFocus.current = 'search'; setPendingProduct(null); setError(''); }}>Cancelar</button></div>}
+        <p className="shrink-0 px-3 pt-1.5 text-[11px] text-surface-500">F2 buscar · Enter selecionar · Enter na quantidade conclui a venda · Shift+Enter adiciona outro item · F6 comanda</p>
+        {pendingProduct && <div className="flex shrink-0 flex-wrap items-end gap-2 border-b border-brand-200 bg-brand-50 px-3 py-2"><div className="min-w-0 flex-1"><p className="text-xs text-surface-500">Produto selecionado</p><p className="truncate text-sm font-semibold">{pendingProduct.name}</p><p className="text-xs text-surface-500">Disponível: {Number((pendingProduct.availableQuantity - quantityInCart(pendingProduct.id)).toFixed(3)).toLocaleString('pt-BR')} {pendingProduct.unit}</p></div><div><label htmlFor="sale-pending-quantity" className="mb-1 block text-xs font-semibold">Quantidade ({pendingProduct.unit})</label><input id="sale-pending-quantity" ref={quantityRef} type="text" inputMode="decimal" className="w-28" value={pendingQuantity} onChange={(event) => setPendingQuantity(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); if (!event.repeat) confirmPendingProduct(event.shiftKey, !event.shiftKey); } }}/></div><button type="button" className="btn-primary" onClick={() => confirmPendingProduct()}>Adicionar</button><button type="button" className="btn-secondary" onClick={() => { pendingFocus.current = 'search'; setPendingProduct(null); setError(''); }}>Cancelar</button></div>}
         {locationId && <div className="shrink-0 border-b border-surface-200 px-3 py-2"><p className="mb-1.5 text-xs text-surface-500">Produtos disponíveis: {products.length} · Estoque: {totalUnitsAvailable.toLocaleString('pt-BR')} · Selecione para adicionar</p><div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">{filteredProducts.map((product, index) => <button key={product.id} onClick={() => addProduct(product)} className={`rounded-md border px-2 py-1 text-left text-xs hover:border-brand-400 hover:bg-brand-50 disabled:opacity-50 ${index === searchIndex ? 'border-brand-500 bg-brand-50 ring-1 ring-brand-400' : 'border-surface-200 bg-white'}`} disabled={!!pendingProduct || product.salePrice === null || quantityInCart(product.id) >= product.availableQuantity}><span className="font-medium">{product.name}</span> · {product.salePrice === null ? 'Preço não cadastrado' : money(product.salePrice)} <span className="text-surface-500">· {Number(product.availableQuantity - quantityInCart(product.id)).toLocaleString('pt-BR')} {product.unit}</span></button>)}{!filteredProducts.length && <p className="py-2 text-xs text-surface-500">Nenhum produto encontrado neste local.</p>}</div></div>}
         <div className="flex shrink-0 items-center gap-2 border-b border-surface-200 px-3 py-2"><ShoppingCart size={16}/><h2 className="text-sm font-semibold">Itens da venda ({cart.length})</h2></div>
         <div className="min-h-0 flex-1 overflow-auto">
@@ -308,7 +325,7 @@ export default function Sales() {
         </div>
       </section>
 
-      <aside className="card flex min-h-0 max-h-[45vh] flex-col overflow-hidden lg:max-h-none">
+      <aside className="flex min-h-0 max-h-[45vh] flex-col overflow-hidden border border-surface-300 bg-white lg:max-h-none">
         <div className="shrink-0 border-b border-surface-200 px-3 py-1.5"><h2 className="font-semibold">Pagamento</h2></div>
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
           {selectedCommand ? <p className="rounded-lg bg-brand-50 p-2 text-sm font-medium text-brand-800">Pagamento com saldo da comanda</p> : <div><label htmlFor="sale-payment" className="mb-1 block text-xs font-medium">Forma de pagamento</label><select id="sale-payment" ref={paymentRef} className="w-full" value={paymentMethod} onChange={(event) => { const method = event.target.value; setPaymentMethod(method); waitingForCard.current = method === 'COMANDA'; if (method === 'COMANDA') cardInputRef.current?.focus(); }} onKeyDown={(event) => { if (event.key !== 'Enter') return; event.preventDefault(); if (paymentMethod === 'COMANDA' && !selectedCommand) { waitingForCard.current = true; cardInputRef.current?.focus(); } else finishRef.current?.focus(); }}>{paymentMethods.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>}
