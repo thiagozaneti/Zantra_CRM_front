@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, Menu, Bell, Search, X } from 'lucide-react';
+import { LogOut, Menu, Bell, Search, X, Package, Warehouse, ClipboardCheck, MapPin, ArrowDownToLine, ArrowLeftRight, Truck, Utensils, ShoppingCart, CreditCard, TentTree, ClipboardList, CalendarCheck, FileBarChart, History, Users, Printer, Shield, type LucideIcon } from 'lucide-react';
 import icon from '../images/icon.png';
 import rioDasPedrasLogo from '../images/LOGO-ACQUA-PARK-TOPO-SITE-300X300-1.png';
 import { api } from '../lib/api';
@@ -49,6 +49,19 @@ const roleLabels: Record<string, string> = {
   SOMENTE_LEITURA: 'Consulta',
   FRENTE_VENDAS: 'Frente de Vendas',
 };
+
+const pageIcons: Record<string, LucideIcon> = {
+  '/stock': Warehouse, '/products': Package, '/inventories': ClipboardCheck, '/locations': MapPin,
+  '/entries': ArrowDownToLine, '/transfers': ArrowLeftRight, '/supplies': Truck, '/consumption': Utensils,
+  '/sales': ShoppingCart, '/commands': CreditCard, '/kiosks': TentTree, '/pending': ClipboardList,
+  '/closings': CalendarCheck, '/reports': FileBarChart, '/audit': History, '/users': Users,
+  '/printer': Printer, '/security': Shield,
+};
+
+function NavigationIcon({ path }: { path: string }) {
+  const Icon = pageIcons[path] || ClipboardList;
+  return <Icon size={17} aria-hidden="true" className="shrink-0"/>;
+}
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -168,14 +181,14 @@ export default function Layout() {
         {/* Header */}
         <header className="h-14 bg-white border-b border-surface-200 flex items-center px-4 sticky top-0 z-30 shrink-0">
           <button
-            className="lg:hidden text-surface-600 hover:text-surface-900 p-2 -ml-2 mr-2"
+            className="lg:hidden mr-2 inline-flex items-center gap-2 rounded-lg border-2 border-brand-700 bg-brand-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
             onClick={() => setSidebarOpen(true)}
             aria-label="Abrir menu" aria-expanded={sidebarOpen}
           >
-            <Menu size={24} />
+            <Menu size={22} /><span>Menu</span>
           </button>
           <button
-            className="hidden lg:inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100"
+            className="hidden lg:inline-flex items-center gap-2 rounded-lg border-2 border-brand-700 bg-brand-600 px-3 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
             onClick={toggleDesktopSidebar}
             title={sidebarCollapsed ? 'Abrir menu' : 'Fechar menu'}
             aria-label={sidebarCollapsed ? 'Abrir menu lateral' : 'Fechar menu lateral'}
@@ -189,7 +202,7 @@ export default function Layout() {
           <span className="hidden max-w-40 truncate text-sm text-surface-600 sm:block">{user?.name}</span>
         </header>
 
-        {activeGroup && activeGroup.id !== 'home' && <div className="shrink-0 border-b border-surface-200 bg-white px-4"><div className="flex min-h-11 items-center gap-4"><span className="hidden shrink-0 text-sm font-semibold text-surface-700 md:block">{activeGroup.label}</span>{activePages.length > 1 && <nav aria-label={`Páginas de ${activeGroup.label}`} className="flex min-w-0 gap-1 overflow-x-auto">{activePages.map((page) => <NavLink key={page.path} to={page.path} className={({ isActive }) => `whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-surface-600 hover:text-surface-900'}`}>{page.label}</NavLink>)}</nav>}{activePages.length === 1 && <span className="py-3 text-sm text-surface-600">{activePages[0].label}</span>}</div></div>}
+        {activeGroup && activeGroup.id !== 'home' && <div className="shrink-0 border-b border-surface-200 bg-white px-4"><div className="flex min-h-11 items-center gap-4"><span className="hidden shrink-0 text-sm font-semibold text-surface-600 lg:block">{activeGroup.label}</span>{activePages.length > 1 && <nav aria-label={`Páginas de ${activeGroup.label}`} className="flex min-w-0 gap-1 overflow-x-auto">{activePages.map((page) => <NavLink key={page.path} to={page.path} className={({ isActive }) => `inline-flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-sm font-semibold ${isActive ? 'border-brand-600 bg-brand-600 text-white shadow-sm' : 'border-surface-300 bg-white text-surface-700 hover:border-brand-400 hover:bg-brand-50'}`}><NavigationIcon path={page.path}/>{page.label}</NavLink>)}</nav>}{activePages.length === 1 && <span className="inline-flex items-center gap-2 py-3 text-sm font-medium text-surface-700"><NavigationIcon path={activePages[0].path}/>{activePages[0].label}</span>}</div></div>}
 
         {/* Page content */}
         <main className={location.pathname === '/sales' ? 'flex-1 min-h-0 overflow-hidden p-2' : 'flex-1 min-h-0 p-4 overflow-y-auto overflow-x-hidden overscroll-contain'}>

@@ -274,11 +274,13 @@ export default function Sales() {
     <div className="flex shrink-0 items-center justify-between gap-3"><div><h1 className="text-xl font-bold text-surface-900">Frente de Vendas</h1><p className={`text-xs ${operationStatus ? 'font-medium text-brand-600' : 'text-surface-500'}`}>{operationStatus || 'Venda, baixa no estoque e emissão automática de comprovante'}</p></div><button className="btn-secondary flex shrink-0 items-center gap-2" onClick={() => setSalesOpen(true)}><History size={16}/>Vendas recentes <span className="rounded-full bg-surface-100 px-1.5 text-xs">{summary.completedSales}</span></button></div>
     {error && <div className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
 
-    <section className={`shrink-0 rounded-xl border px-3 py-2.5 ${printerReady ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2.5">{printerReady ? <Wifi size={18} className="text-emerald-600"/> : <WifiOff size={18} className="text-amber-600"/>}<div><p className="text-sm font-semibold text-surface-900">{printerReady ? 'Impressora conectada' : workstation.bound ? 'Impressora indisponível' : 'Impressora não vinculada'}</p><p className="text-[11px] text-surface-600">{workstation.bound ? `${workstation.terminal.name} · ${workstation.terminal.activePrinterName || 'sem impressora configurada'} · ${workstation.terminal.online ? 'Agent online' : 'Agent offline'}` : 'O vínculo é feito em Configuração de Impressora. A venda pode ser concluída sem conexão.'}</p></div></div>
-      </div>
-      {workstation.bound && locationId && workstation.terminal.locationId !== locationId && <p className="mt-1 text-xs font-medium text-red-700">O terminal pertence a outro local; a venda será concluída e o sistema registrará o aviso de impressão.</p>}
-    </section>
+    <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs" role="status">
+      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-medium ${printerReady ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+        {printerReady ? <Wifi size={14}/> : <WifiOff size={14}/>}
+        {printerReady ? 'Impressora conectada' : 'Impressora desconectada'}
+      </span>
+      {workstation.bound && locationId && workstation.terminal.locationId !== locationId && <span className="text-red-700">Impressora vinculada a outro local</span>}
+    </div>
 
     {canCreate && <div className="grid shrink-0 gap-2 md:grid-cols-[minmax(0,1fr)_220px]">
       <RFIDCommandPanel enabled={canCreate} busy={saving} selected={selectedCommand} onSelect={selectCommand} cardInputRef={cardInputRef}/>
@@ -288,7 +290,7 @@ export default function Sales() {
       </div>
     </div>}
 
-    {canCreate && <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 xl:grid-cols-[minmax(0,1fr)_290px] xl:grid-rows-1">
+    {canCreate && <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-2 lg:grid-cols-[minmax(0,1fr)_290px] lg:grid-rows-1">
       <section className="card flex min-h-0 flex-col overflow-hidden">
         <div className="grid shrink-0 gap-2 border-b border-surface-200 bg-surface-50 p-3 sm:grid-cols-[minmax(170px,0.8fr)_minmax(0,1.5fr)]">
           <div><label htmlFor="sale-location" className="mb-1 block text-xs font-semibold text-surface-600">Local de venda *</label><select id="sale-location" className="w-full" value={locationId} disabled={saving || (user?.role === 'FRENTE_VENDAS' && bars.length === 1)} onChange={(e) => void changeLocation(e.target.value)}><option value="">Selecione...</option>{bars.map((bar) => <option key={bar.id} value={bar.id}>{bar.name}</option>)}</select></div>
@@ -306,12 +308,17 @@ export default function Sales() {
         </div>
       </section>
 
-      <aside className="card flex min-h-0 flex-col overflow-hidden">
-        <div className="border-b border-surface-200 px-4 py-2.5"><h2 className="font-semibold">Pagamento</h2></div>
-        <div className="flex flex-1 flex-col gap-2 p-3">
-          <div><label htmlFor="sale-payment" className="mb-1 block text-xs font-medium">Forma de pagamento</label><select id="sale-payment" ref={paymentRef} className="w-full" value={paymentMethod} disabled={!!selectedCommand} onChange={(event) => { const method = event.target.value; setPaymentMethod(method); waitingForCard.current = method === 'COMANDA'; if (method === 'COMANDA') cardInputRef.current?.focus(); }} onKeyDown={(event) => { if (event.key !== 'Enter') return; event.preventDefault(); if (paymentMethod === 'COMANDA' && !selectedCommand) { waitingForCard.current = true; cardInputRef.current?.focus(); } else finishRef.current?.focus(); }}>{paymentMethods.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+      <aside className="card flex min-h-0 max-h-[45vh] flex-col overflow-hidden lg:max-h-none">
+        <div className="shrink-0 border-b border-surface-200 px-3 py-1.5"><h2 className="font-semibold">Pagamento</h2></div>
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+          {selectedCommand ? <p className="rounded-lg bg-brand-50 p-2 text-sm font-medium text-brand-800">Pagamento com saldo da comanda</p> : <div><label htmlFor="sale-payment" className="mb-1 block text-xs font-medium">Forma de pagamento</label><select id="sale-payment" ref={paymentRef} className="w-full" value={paymentMethod} onChange={(event) => { const method = event.target.value; setPaymentMethod(method); waitingForCard.current = method === 'COMANDA'; if (method === 'COMANDA') cardInputRef.current?.focus(); }} onKeyDown={(event) => { if (event.key !== 'Enter') return; event.preventDefault(); if (paymentMethod === 'COMANDA' && !selectedCommand) { waitingForCard.current = true; cardInputRef.current?.focus(); } else finishRef.current?.focus(); }}>{paymentMethods.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></div>}
           <div><label htmlFor="sale-discount" className="mb-1 block text-xs font-medium">Desconto</label><input id="sale-discount" className="w-full" type="number" min="0" max={subtotal} step="0.01" value={discount || ''} onChange={(e) => setDiscount(Number(e.target.value))}/></div>
-          <div className="mt-auto border-t border-surface-200 pt-3"><div className="flex justify-between text-sm text-surface-500"><span>Subtotal dos produtos</span><span>{money(subtotal)}</span></div><div className="mt-1 flex justify-between text-sm text-surface-500"><span>Desconto</span><span>{money(discount)}</span></div><p className="mt-4 text-sm text-surface-600">Total da venda</p><p className="text-3xl font-bold tabular-nums text-surface-900">{money(total)}</p><button ref={finishRef} className="btn-primary mt-3 w-full disabled:opacity-50" disabled={saving || !cart.length || !!pendingProduct || (paymentMethod === 'COMANDA' && !selectedCommand)} onClick={finishSale}>{saving ? 'Processando...' : 'Concluir venda'}</button></div>
+        </div>
+        <div className="shrink-0 border-t border-surface-200 bg-white p-2">
+          <div className="flex justify-between text-sm text-surface-600"><span>Subtotal</span><span>{money(subtotal)}</span></div>
+          <div className="flex justify-between text-sm text-surface-600"><span>Desconto</span><span>{money(discount)}</span></div>
+          <div className="mt-1 flex items-baseline justify-between gap-2"><span className="text-sm font-semibold text-surface-700">Total da venda</span><strong className="text-xl font-bold tabular-nums text-surface-900">{money(total)}</strong></div>
+          <button ref={finishRef} className="btn-primary mt-2 w-full disabled:opacity-50" disabled={saving || !cart.length || !!pendingProduct || (paymentMethod === 'COMANDA' && !selectedCommand)} onClick={finishSale}>{saving ? 'Processando...' : 'Concluir venda'}</button>
         </div>
       </aside>
     </div>}

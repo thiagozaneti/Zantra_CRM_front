@@ -1,14 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Activity, Boxes, Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import rioDasPedrasLogo from '../images/LOGO-ACQUA-PARK-TOPO-SITE-300X300-1.png';
-
-const benefits = [
-  { icon: Boxes, title: 'Operação centralizada', text: 'Estoque, movimentações, vendas e consumo em um único ambiente.' },
-  { icon: Activity, title: 'Decisões em tempo real', text: 'Indicadores claros para acompanhar toda a operação.' },
-  { icon: ShieldCheck, title: 'Controle e rastreabilidade', text: 'Permissões personalizadas e histórico completo das ações.' },
-];
 
 export default function Login() {
   const [identifier, setIdentifier] = useState('');
@@ -33,43 +27,13 @@ export default function Login() {
     }
   };
 
-  return <main className="min-h-screen bg-surface-50 lg:grid lg:h-screen lg:min-h-0 lg:overflow-hidden lg:grid-cols-[1.08fr_0.92fr]">
-    <section className="relative hidden lg:flex overflow-hidden bg-gradient-to-br from-brand-700 via-brand-800 to-surface-900 px-10 xl:px-14 2xl:px-20 py-7 2xl:py-10 text-white">
-      <div className="absolute -top-36 -left-28 h-96 w-96 rounded-full bg-brand-400/20 blur-3xl"/>
-      <div className="absolute -bottom-48 -right-24 h-[30rem] w-[30rem] rounded-full bg-cyan-400/10 blur-3xl"/>
-      <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)', backgroundSize: '42px 42px' }}/>
-
-      <div className="relative z-10 flex w-full max-w-2xl flex-col justify-between">
-        <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white p-1 shadow-sm 2xl:h-24 2xl:w-24">
-          <img src={rioDasPedrasLogo} alt="Rio das Pedras Acqua Park" className="h-full w-full object-contain"/>
-        </div>
-
-        <div className="my-5 xl:my-7 2xl:my-10">
-          <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-brand-100">Gestão integrada</span>
-          <h1 className="mt-4 2xl:mt-6 max-w-xl text-3xl xl:text-4xl 2xl:text-5xl font-bold leading-[1.08] tracking-tight">Sua operação conectada, organizada e sob controle.</h1>
-          <p className="mt-3 2xl:mt-5 max-w-xl text-sm xl:text-base 2xl:text-lg leading-relaxed text-brand-100/80">O Zantra reúne processos, pessoas e informações para transformar a rotina da sua empresa em decisões mais rápidas e seguras.</p>
-
-          <div className="mt-5 xl:mt-7 2xl:mt-10 grid gap-3 xl:grid-cols-3">
-            {benefits.map((benefit) => <div key={benefit.title} className="rounded-xl 2xl:rounded-2xl border border-white/10 bg-white/[0.07] p-3 2xl:p-4 backdrop-blur-sm">
-              <benefit.icon size={18} className="text-brand-200"/>
-              <h2 className="mt-2 2xl:mt-3 text-xs 2xl:text-sm font-semibold">{benefit.title}</h2>
-              <p className="mt-1 text-[11px] 2xl:text-xs leading-relaxed text-brand-100/65">{benefit.text}</p>
-            </div>)}
-          </div>
-        </div>
-
-        <p className="text-xs text-brand-200/60">Tecnologia para uma gestão mais simples e eficiente.</p>
-      </div>
-    </section>
-
-    <section className="flex min-h-screen items-center justify-center px-5 py-7 sm:px-10 lg:h-screen lg:min-h-0 lg:px-10 lg:py-5 xl:px-14 2xl:px-20">
-      <div className="w-full max-w-[410px]">
-        <div className="mb-7 lg:hidden"><img src={rioDasPedrasLogo} alt="Rio das Pedras Acqua Park" className="h-20 w-20 object-contain"/></div>
+  return <main className="flex min-h-screen items-center justify-center bg-surface-50 px-4 py-6">
+    <section className="w-full max-w-md rounded-2xl border border-surface-200 bg-white p-6 shadow-sm sm:p-8">
+      <div className="w-full">
+        <div className="mb-5 flex justify-center"><img src={rioDasPedrasLogo} alt="Rio das Pedras Acqua Park" className="h-24 w-24 object-contain"/></div>
 
         <div className="mb-6 2xl:mb-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-600">Área segura</p>
-          <h2 className="mt-1.5 text-2xl 2xl:text-3xl font-bold tracking-tight text-surface-900">Acesse sua conta</h2>
-          <p className="mt-2 text-sm leading-relaxed text-surface-500">Informe suas credenciais para continuar para o ambiente de gestão.</p>
+          <h2 className="text-center text-2xl font-bold tracking-tight text-surface-900">Acesse sua conta</h2>
         </div>
 
         {error && <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}

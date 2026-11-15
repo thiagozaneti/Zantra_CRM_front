@@ -35,7 +35,8 @@ describe('Frente de vendas', () => {
     expect((screen.getByLabelText('Quantidade de Refrigerante') as HTMLInputElement).value).toBe('2');
     fireEvent.click(screen.getByRole('button', { name: 'Simular comanda' }));
     expect(screen.getByText('Saldo disponível').parentElement?.textContent).toContain('20,00');
-    expect((screen.getByLabelText('Forma de pagamento') as HTMLSelectElement).value).toBe('COMANDA');
+    expect(screen.queryByLabelText('Forma de pagamento')).toBeNull();
+    expect(screen.getByText('Pagamento com saldo da comanda')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Concluir venda' }));
     await waitFor(() => expect(api.createSale).toHaveBeenCalledWith(expect.objectContaining({
       locationId: 'bar-1', paymentMethod: 'COMANDA', comandaId: 'comanda-1', printReceipt: true,
